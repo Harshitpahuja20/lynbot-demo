@@ -8,6 +8,7 @@ import {
   MessageSquare, 
   BarChart3,
   Key,
+  Mail,
   Shield,
   Eye,
   EyeOff,

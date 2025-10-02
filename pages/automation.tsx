@@ -708,7 +708,7 @@ const AutomationPage: React.FC = () => {
                 {/* Daily Limits */}
                 <div>
                   <h4 className="text-md font-medium text-gray-900 mb-3">Daily Limits</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Connections
@@ -755,6 +755,23 @@ const AutomationPage: React.FC = () => {
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           dailyLimits: { ...prev.dailyLimits, profileViews: parseInt(e.target.value) || 0 }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Emails
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={formData.dailyLimits.emails}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          dailyLimits: { ...prev.dailyLimits, emails: parseInt(e.target.value) || 0 }
                         }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />

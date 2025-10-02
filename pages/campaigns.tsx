@@ -394,22 +394,22 @@ export default function Campaigns() {
             <div className="flex items-center gap-3">
               <Search className="w-8 h-8 text-purple-600" />
               <div>
-                <h4 className="font-medium text-gray-900">LinkedIn Search</h4>
-                <p className="text-sm text-gray-600">Find prospects using LinkedIn criteria</p>
+                <h4 className="font-medium text-gray-900">Sales Navigator Search</h4>
+                <p className="text-sm text-gray-600">Advanced prospect targeting with Sales Navigator</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Settings className="w-8 h-8 text-purple-600" />
               <div>
-                <h4 className="font-medium text-gray-900">Campaign Management</h4>
-                <p className="text-sm text-gray-600">Create and manage outreach campaigns</p>
+                <h4 className="font-medium text-gray-900">Multi-Channel Campaigns</h4>
+                <p className="text-sm text-gray-600">LinkedIn + Email automation campaigns</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <BarChart3 className="w-8 h-8 text-purple-600" />
               <div>
-                <h4 className="font-medium text-gray-900">Performance Tracking</h4>
-                <p className="text-sm text-gray-600">Monitor campaign success metrics</p>
+                <h4 className="font-medium text-gray-900">AI-Powered Analytics</h4>
+                <p className="text-sm text-gray-600">Lead scoring, appointment tracking, and ROI analysis</p>
               </div>
             </div>
           </div>

@@ -70,6 +70,10 @@ Full-Stack Next.js LinkedIn Automation Platform for lead generation and outreach
 - `/api/user/profile` - User profile management
 - `/api/user/dashboard-stats` - Dashboard statistics
 - `/api/campaigns` - Campaign management
+- `/api/prospects` - Prospect management and lead scoring
+- `/api/messages` - Multi-channel messaging (LinkedIn + Email)
+- `/api/automation` - Automation settings and status
+- `/api/analytics` - Performance analytics and reporting
 - `/api/admin/users` - Admin user management
 
 ## Development
