@@ -24,9 +24,6 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 
 async function handleGetProfile(req: AuthenticatedRequest, res: NextApiResponse) {
   try {
-    // Add cache headers to prevent unnecessary requests
-    res.setHeader('Cache-Control', 'private, max-age=300'); // 5 minutes cache
-    
     const user = await userOperations.findById(req.user.id);
 
     if (!user) {
@@ -36,23 +33,31 @@ async function handleGetProfile(req: AuthenticatedRequest, res: NextApiResponse)
       });
     }
 
-    // Decrypt LinkedIn passwords for display (masked)
-    if (user.linkedin_accounts) {
-      user.linkedin_accounts = user.linkedin_accounts.map((account: any) => ({
+    // Create safe user object for response
+    const safeUser = {
+      ...user,
+      password_hash: undefined, // Never send password hash
+      linkedin_accounts: user.linkedin_accounts?.map((account: any) => ({
         ...account,
+        encryptedPassword: undefined, // Never send encrypted password
         password: account.encryptedPassword ? '********' : '',
         hasPassword: !!account.encryptedPassword
-      }));
-    }
-
-    // Mask API keys
-    if (user.api_keys?.openai) {
-      user.api_keys.openai = '********' + user.api_keys.openai.slice(-4);
+      })) || [],
+      email_accounts: user.email_accounts?.map((account: any) => ({
+        ...account,
+        encryptedPassword: undefined // Never send encrypted password
+      })) || [],
+      api_keys: {
+        ...user.api_keys,
+        encryptedOpenAI: user.api_keys?.encryptedOpenAI ? '********' : undefined,
+        encryptedPerplexity: user.api_keys?.encryptedPerplexity ? '********' : undefined,
+        encryptedClaude: user.api_keys?.encryptedClaude ? '********' : undefined
+      }
     }
 
     res.json({
       success: true,
-      user
+      user: safeUser
     });
 
   } catch (error) {

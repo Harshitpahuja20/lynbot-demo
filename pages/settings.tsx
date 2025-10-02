@@ -132,9 +132,15 @@ const SettingsPage: React.FC = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+
       const response = await fetch('/api/user/profile', {
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -182,9 +188,12 @@ const SettingsPage: React.FC = () => {
 
   const fetchAIProviders = async () => {
     try {
+      const token = sessionStorage.getItem('token');
+      if (!token) return;
+
       const response = await fetch('/api/ai/providers', {
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -206,10 +215,16 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(profileForm)
@@ -248,10 +263,16 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+
       const response = await fetch('/api/user/linkedin-account', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(linkedinForm)
@@ -283,10 +304,16 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+
       const response = await fetch('/api/user/email-account', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(emailForm)
@@ -318,10 +345,16 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+
       const response = await fetch('/api/user/ai-settings', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(aiForm)
@@ -348,10 +381,16 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+
       const response = await fetch('/api/user/notifications', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ notifications: notificationForm })

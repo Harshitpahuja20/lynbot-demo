@@ -416,7 +416,7 @@ export interface Message {
 // User operations
 export const userOperations = {
   async create(userData: Omit<User, 'id' | 'created_at' | 'updated_at'>) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('users')
       .insert([userData])
@@ -452,7 +452,7 @@ export const userOperations = {
   },
 
   async update(id: string, updates: Partial<User>) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('users')
       .update(updates)
@@ -465,7 +465,7 @@ export const userOperations = {
   },
 
   async delete(id: string) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { error } = await supabase
       .from('users')
       .delete()
@@ -481,7 +481,7 @@ export const userOperations = {
     role?: string
     status?: string
   } = {}) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     let query = supabase
       .from('users')
       .select('*', { count: 'exact' })
