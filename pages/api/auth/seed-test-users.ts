@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { userOperations } from '../../../lib/database';
+import { getSupabaseAdminClient } from '../../../lib/supabase';
+import bcrypt from 'bcryptjs';
 
 interface TestUserData {
   email: string;
@@ -38,22 +39,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     ];
 
+    // Use admin client to bypass RLS
+    const adminSupabase = getSupabaseAdminClient();
     const createdUsers = [];
 
     for (const userData of testUsers) {
       // Check if user already exists
-      const existingUser = await userOperations.findByEmail(userData.email);
+      const { data: existingUser, error: findError } = await adminSupabase
+        .from('users')
+        .select('email')
+        .eq('email', userData.email.toLowerCase())
+        .single();
+      
+      if (findError && findError.code !== 'PGRST116') {
+        console.error(`Error checking for existing user ${userData.email}:`, findError);
+        continue;
+      }
+      
       if (existingUser) {
         console.log(`User ${userData.email} already exists, skipping...`);
         continue;
       }
 
       // Create new user
-      const hashedPassword = await userOperations.hashPassword(userData.password);
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash(userData.password, salt);
       
-      const user = await userOperations.create({
-        ...userData,
+      const { data: user, error: createError } = await adminSupabase
+        .from('users')
+        .insert([{
+        email: userData.email.toLowerCase(),
         password_hash: hashedPassword,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        company: userData.company,
+        role: userData.role,
         subscription: {
           plan: 'free' as const,
           status: 'active'
@@ -85,12 +105,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           totalCampaigns: 0,
           totalProspects: 0
         }
-      });
+        }])
+        .select()
+        .single();
+
+      if (createError) {
+        console.error(`Error creating user ${userData.email}:`, createError);
+        continue;
+      }
 
       createdUsers.push({
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name
+        email: user?.email || userData.email,
+        firstName: user?.first_name || userData.first_name,
+        lastName: user?.last_name || userData.last_name
       });
 
       console.log(`Created test user: ${userData.email}`);
