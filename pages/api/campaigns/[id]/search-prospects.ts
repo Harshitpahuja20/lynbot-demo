@@ -73,12 +73,13 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
           );
 
           if (!exists) {
-            const prospect = await prospectOperations.create({
+            // Create prospect with proper type structure
+            const prospectCreateData = {
               user_id: userId,
               campaign_id: campaignId as string,
               linkedin_data: prospectData,
               contact_info: {},
-              status: 'new',
+              status: 'new' as const,
               interactions: [],
               automation: {
                 connectionRequestSent: false,
@@ -108,9 +109,13 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
               tags: [],
               notes: [],
               custom_fields: {},
-              source: 'search',
-              search_query: JSON.stringify(campaign.search_criteria)
-            });
+              source: 'search' as const,
+              search_query: JSON.stringify(campaign.search_criteria),
+              is_active: true,
+              last_updated: new Date().toISOString()
+            };
+
+            const prospect = await prospectOperations.create(prospectCreateData);
 
             savedProspects.push(prospect);
             newProspects++;
