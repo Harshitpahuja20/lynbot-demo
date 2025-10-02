@@ -62,7 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           followUpMessages: { enabled: false },
           profileViews: { enabled: false },
           emailSending: { enabled: false }
-          emailSending: { enabled: false }
         },
         notifications: {
           email: true,
