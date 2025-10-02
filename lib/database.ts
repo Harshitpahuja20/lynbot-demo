@@ -72,11 +72,21 @@ export interface User {
   api_keys: {
     openai?: string
     encryptedOpenAI?: string
+    perplexity?: string
+    encryptedPerplexity?: string
+    claude?: string
+    encryptedClaude?: string
   }
   settings: {
     timezone: string
     workingHours: { start: number; end: number }
     workingDays: number[]
+    aiProvider: {
+      provider: 'openai' | 'perplexity' | 'claude'
+      model: string
+      temperature: number
+      maxTokens: number
+    }
     automation: {
       enabled: boolean
       connectionRequests: { enabled: boolean }

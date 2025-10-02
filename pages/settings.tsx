@@ -46,6 +46,18 @@ const SettingsPage: React.FC = () => {
     hasExistingKey: false
   });
 
+  // AI provider settings
+  const [aiSettings, setAiSettings] = useState({
+    provider: 'openai' as 'openai' | 'perplexity' | 'claude',
+    model: 'gpt-4o-mini',
+    apiKey: '',
+    temperature: 0.7,
+    maxTokens: 1000,
+    showApiKey: false,
+    hasExistingKey: false
+  });
+
+  const [aiProviders, setAiProviders] = useState<any>({});
   // Email account settings
   const [emailData, setEmailData] = useState({
     email: '',
@@ -72,16 +84,36 @@ const SettingsPage: React.FC = () => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'linkedin', label: 'LinkedIn Account', icon: Key },
     { id: 'email', label: 'Email Accounts', icon: Mail },
-    { id: 'openai', label: 'OpenAI API', icon: Shield },
+    { id: 'ai', label: 'AI Configuration', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
 
   useEffect(() => {
     if (user) {
       fetchUserProfile();
+      fetchAIProviders();
     }
   }, [user?.id]);
 
+  const fetchAIProviders = async () => {
+    try {
+      const response = await fetch('/api/ai/providers', {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setAiProviders(data.providers);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching AI providers:', error);
+    }
+  };
   const fetchUserProfile = async () => {
     try {
       setInitialLoading(true);
@@ -121,6 +153,17 @@ const SettingsPage: React.FC = () => {
             }));
           }
 
+          // Set AI provider settings
+          if (data.user.settings?.aiProvider) {
+            setAiSettings(prev => ({
+              ...prev,
+              provider: data.user.settings.aiProvider.provider || 'openai',
+              model: data.user.settings.aiProvider.model || 'gpt-4o-mini',
+              temperature: data.user.settings.aiProvider.temperature || 0.7,
+              maxTokens: data.user.settings.aiProvider.maxTokens || 1000,
+              hasExistingKey: !!(data.user.apiKeys?.encryptedOpenAI || data.user.apiKeys?.encryptedPerplexity || data.user.apiKeys?.encryptedClaude)
+            }));
+          }
           // Set Email account data
           if (data.user.emailAccounts && data.user.emailAccounts.length > 0) {
             const emailAccount = data.user.emailAccounts[0];
