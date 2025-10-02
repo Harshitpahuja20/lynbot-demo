@@ -404,7 +404,6 @@ const MessagesPage: React.FC = () => {
             </button>
           </div>
         )}
-      </div>
 
         <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex">
           {/* Conversations List */}
@@ -470,6 +469,7 @@ const MessagesPage: React.FC = () => {
                   Email
                 </button>
               </div>
+
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -611,7 +611,7 @@ const MessagesPage: React.FC = () => {
                         <h3 className="text-lg font-medium text-gray-900">
                           {selectedConversation.prospect.linkedinData.name}
                         </h3>
-                        {selectedConversation.prospect.linkedinData.company && (
+                        <div className="flex items-center space-x-2">
                           <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                             selectedConversation.platform === 'email' 
                               ? 'bg-green-100 text-green-700' 
@@ -619,10 +619,12 @@ const MessagesPage: React.FC = () => {
                           }`}>
                             {selectedConversation.platform === 'email' ? 'Email' : 'LinkedIn'}
                           </div>
-                          <p className="text-sm text-gray-500">
-                            {selectedConversation.prospect.linkedinData.company}
-                          </p>
-                        )}
+                          {selectedConversation.prospect.linkedinData.company && (
+                            <p className="text-sm text-gray-500">
+                              {selectedConversation.prospect.linkedinData.company}
+                            </p>
+                          )}
+                        </div>
                         {selectedConversation.platform === 'email' && selectedConversation.prospect.contactInfo?.email && (
                           <p className="text-sm text-gray-500">
                             {selectedConversation.prospect.contactInfo.email}
@@ -830,106 +832,106 @@ const MessagesPage: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
 
-      {/* New Email Modal */}
-      {showNewEmailModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Compose New Email</h3>
-                <button
-                  onClick={() => {
-                    setShowNewEmailModal(false);
-                    setEmailSubject('');
-                    setEmailTo('');
-                    setEmailFrom('');
-                    setNewMessage('');
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+        {/* New Email Modal */}
+        {showNewEmailModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Compose New Email</h3>
+                  <button
+                    onClick={() => {
+                      setShowNewEmailModal(false);
+                      setEmailSubject('');
+                      setEmailTo('');
+                      setEmailFrom('');
+                      setNewMessage('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+                      <input
+                        type="email"
+                        value={emailTo}
+                        onChange={(e) => setEmailTo(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="recipient@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+                      <input
+                        type="email"
+                        value={emailFrom}
+                        onChange={(e) => setEmailFrom(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="your@example.com"
+                      />
+                    </div>
+                  </div>
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                     <input
-                      type="email"
-                      value={emailTo}
-                      onChange={(e) => setEmailTo(e.target.value)}
+                      type="text"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="recipient@example.com"
+                      placeholder="Email subject"
                     />
                   </div>
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
-                    <input
-                      type="email"
-                      value={emailFrom}
-                      onChange={(e) => setEmailFrom(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="your@example.com"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      rows={6}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                      placeholder="Type your email message..."
                     />
                   </div>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                  <input
-                    type="text"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Email subject"
-                  />
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowNewEmailModal(false);
+                      setEmailSubject('');
+                      setEmailTo('');
+                      setEmailFrom('');
+                      setNewMessage('');
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Handle sending new email
+                      setShowNewEmailModal(false);
+                      // You would implement prospect selection here
+                    }}
+                    disabled={!emailTo.trim() || !emailSubject.trim() || !newMessage.trim()}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    <Mail className="w-4 h-4 mr-2 inline" />
+                    Send Email
+                  </button>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                  <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                    placeholder="Type your email message..."
-                  />
-                </div>
-              </div>
-              
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowNewEmailModal(false);
-                    setEmailSubject('');
-                    setEmailTo('');
-                    setEmailFrom('');
-                    setNewMessage('');
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    // Handle sending new email
-                    setShowNewEmailModal(false);
-                    // You would implement prospect selection here
-                  }}
-                  disabled={!emailTo.trim() || !emailSubject.trim() || !newMessage.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  <Mail className="w-4 h-4 mr-2 inline" />
-                  Send Email
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Layout>
   );
 };

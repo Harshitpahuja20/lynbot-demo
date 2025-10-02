@@ -299,6 +299,46 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleSaveAISettings = async () => {
+    if (!aiSettings.apiKey.trim()) {
+      setMessage({ type: 'error', text: 'Please provide your API key' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    
+    try {
+      const response = await fetch('/api/user/ai-settings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          provider: aiSettings.provider,
+          model: aiSettings.model,
+          apiKey: aiSettings.apiKey,
+          temperature: aiSettings.temperature,
+          maxTokens: aiSettings.maxTokens
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setMessage({ type: 'success', text: 'AI settings saved successfully!' });
+        setAiSettings(prev => ({ ...prev, hasExistingKey: true, apiKey: '' }));
+      } else {
+        throw new Error(data.error || 'Failed to save AI settings');
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save AI settings. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveEmail = async () => {
     if (!emailData.email) {
       setMessage({ type: 'error', text: 'Please provide an email address' });
@@ -383,6 +423,14 @@ const SettingsPage: React.FC = () => {
     }
   }, [message]);
 
+  const getApiKeyPlaceholder = (provider: string) => {
+    switch (provider) {
+      case 'openai': return 'sk-...';
+      case 'perplexity': return 'pplx-...';
+      case 'claude': return 'sk-ant-...';
+      default: return 'API key';
+    }
+  };
   // Prevent infinite loops by memoizing user check
   useEffect(() => {
     if (!user) {

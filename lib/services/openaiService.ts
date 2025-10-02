@@ -107,6 +107,7 @@ class MessageGenerator {
     const template = templates[tone as keyof typeof templates] || templates.professional;
     return template;
   }
+
   async generateConnectionMessage(prospectData: ProspectData, campaignData: CampaignData): Promise<string> {
     const tone = campaignData.tone || 'professional';
     
@@ -215,13 +216,14 @@ export async function generateAIEmail(options: MessageGenerationOptions): Promis
   const { prospectData, messageType, campaignData } = options;
   
   switch (messageType) {
-    case 'cold_email':
+    case 'connection':
       return await messageGenerator.generateColdEmail(prospectData, campaignData);
-    case 'email_follow_up':
+    case 'follow_up':
       return await messageGenerator.generateEmailFollowUp(prospectData, campaignData);
     default:
       // Fallback to cold email for unknown types
       return await messageGenerator.generateColdEmail(prospectData, campaignData);
   }
 }
+
 export { MessageGenerator, messageGenerator };
