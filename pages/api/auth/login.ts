@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { userOperations } from '../../../lib/database';
+import { getSupabaseAdminClient } from '../../../lib/supabase';
+import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -19,8 +20,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Find user
-    const user = await userOperations.findByEmail(email);
+    // Find user using admin client to bypass RLS
+    const supabase = getSupabaseAdminClient();
+    const { data: user, error: findError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .single();
+    
     if (!user) {
       return res.status(401).json({ 
         success: false,
@@ -37,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Verify password
-    const isValidPassword = await userOperations.comparePassword(password, user.password_hash);
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ 
         success: false,
@@ -46,9 +53,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Update last login
-    await userOperations.update(user.id, {
-      last_login: new Date().toISOString()
-    });
+    await supabase
+      .from('users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', user.id);
 
     // Generate JWT token
     const token = jwt.sign(

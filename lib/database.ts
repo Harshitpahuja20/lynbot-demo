@@ -343,7 +343,7 @@ export const userOperations = {
   },
 
   async findByEmail(email: string) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -355,7 +355,7 @@ export const userOperations = {
   },
 
   async findById(id: string) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('users')
       .select('*')
