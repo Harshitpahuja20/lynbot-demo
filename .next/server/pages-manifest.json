@@ -3,6 +3,7 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/signin": "pages/signin.js",
-  "/": "pages/index.js",
-  "/api/auth/login": "pages/api/auth/login.js"
+  "/api/auth/login": "pages/api/auth/login.js",
+  "/seed-test-users": "pages/seed-test-users.js",
+  "/api/auth/seed-test-users": "pages/api/auth/seed-test-users.js"
 }
