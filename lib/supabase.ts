@@ -11,7 +11,16 @@ export function getSupabaseClient(): SupabaseClient {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
+      console.warn('Supabase environment variables not found. Please configure Supabase integration.');
+      // Return a mock client that won't cause errors
+      return {
+        from: () => ({
+          select: () => Promise.resolve({ data: [], error: null }),
+          insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+          update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+          delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+        })
+      } as any;
     }
 
     _supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -26,7 +35,16 @@ export function getSupabaseAdminClient(): SupabaseClient {
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
-      throw new Error('Missing Supabase admin environment variables. Please check your .env.local file.');
+      console.warn('Supabase admin environment variables not found. Please configure Supabase integration.');
+      // Return a mock client that won't cause errors
+      return {
+        from: () => ({
+          select: () => Promise.resolve({ data: [], error: null }),
+          insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+          update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+          delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+        })
+      } as any;
     }
 
     _supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);

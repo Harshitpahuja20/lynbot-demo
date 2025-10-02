@@ -56,7 +56,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   if (process.env.NODE_ENV !== 'production') {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       // eslint-disable-next-line no-console
-      console.error('Supabase config missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local');
+      console.warn('Supabase not configured. Please set up Supabase integration via Bolt settings.');
     }
   }
 
