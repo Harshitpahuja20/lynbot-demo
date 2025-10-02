@@ -14,7 +14,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  ExternalLink,
+  ExternalLink
   Building,
   MapPin,
   Briefcase,

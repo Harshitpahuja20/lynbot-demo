@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
-import { Plus, Search, Users, BarChart3, Settings, Loader2 } from 'lucide-react';
+import { Plus, Search, Users, BarChart3, Settings, Loader2, Target } from 'lucide-react';
 
 interface Campaign {
   _id: string;
