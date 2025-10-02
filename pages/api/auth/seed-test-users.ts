@@ -1,6 +1,15 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { userOperations } from '../../../lib/database';
 
+interface TestUserData {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  company: string;
+  role: 'user' | 'admin' | 'premium';
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ 
@@ -10,14 +19,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const testUsers = [
+    const testUsers: TestUserData[] = [
       {
         email: 'sean@sitehues.com',
         password: 'password123',
         first_name: 'Sean',
         last_name: 'Developer',
         company: 'Sitehues Media Inc',
-        role: 'user'
+        role: 'user' as const
       },
       {
         email: 'test@example.com',
@@ -25,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         first_name: 'Test',
         last_name: 'User',
         company: 'Test Company',
-        role: 'user'
+        role: 'user' as const
       }
     ];
 
