@@ -62,6 +62,51 @@ class MessageGenerator {
       .replace(/{field}/g, prospectData.industry || 'this field');
   }
 
+  generateEmailSubject(messageType: string, prospectData: ProspectData, tone: string): string {
+    const subjectTemplates = {
+      cold_email: {
+        professional: `Partnership opportunity with ${prospectData.company || 'your company'}`,
+        casual: `Quick question about ${prospectData.industry || 'your work'}`,
+        friendly: `Connecting with fellow ${prospectData.industry || 'professional'} professionals`,
+        direct: `Business opportunity for ${prospectData.name}`
+      },
+      email_follow_up: {
+        professional: `Following up on our previous conversation`,
+        casual: `Checking in - ${prospectData.name}`,
+        friendly: `Hope you're doing well, ${prospectData.name}`,
+        direct: `Next steps for our discussion`
+      }
+    };
+
+    const templates = subjectTemplates[messageType as keyof typeof subjectTemplates];
+    if (!templates) return `Message for ${prospectData.name}`;
+    
+    const template = templates[tone as keyof typeof templates] || templates.professional;
+    return template;
+  }
+
+  generateEmailContent(messageType: string, prospectData: ProspectData, tone: string): string {
+    const emailTemplates = {
+      cold_email: {
+        professional: `Hi ${prospectData.name},\n\nI hope this email finds you well. I came across your profile and was impressed by your work at ${prospectData.company || 'your company'} in the ${prospectData.industry || 'industry'} space.\n\nI'd love to explore potential collaboration opportunities that could benefit both our organizations. Would you be open to a brief conversation this week?\n\nBest regards`,
+        casual: `Hey ${prospectData.name}!\n\nSaw your work at ${prospectData.company || 'your company'} and thought it was really cool. Would love to chat about some ideas I have that might interest you.\n\nFree for a quick call this week?\n\nCheers`,
+        friendly: `Hi ${prospectData.name},\n\nI've been following the great work happening at ${prospectData.company || 'your company'} and wanted to reach out. Your background in ${prospectData.industry || 'the industry'} caught my attention.\n\nI'd enjoy connecting and sharing some insights that might be valuable for your team. Are you available for a brief chat?\n\nLooking forward to hearing from you`,
+        direct: `${prospectData.name},\n\nI have a business proposition that could significantly impact ${prospectData.company || 'your company'}\'s growth in ${prospectData.industry || 'your industry'}.\n\nAre you available for a 15-minute call this week to discuss?\n\nRegards`
+      },
+      email_follow_up: {
+        professional: `Hi ${prospectData.name},\n\nI wanted to follow up on my previous email regarding potential collaboration opportunities between our organizations.\n\nI understand you're busy, but I believe this could be mutually beneficial. Would you have 10 minutes this week for a quick conversation?\n\nBest regards`,
+        casual: `Hey ${prospectData.name},\n\nJust wanted to circle back on my last email. Still think there's some cool stuff we could work on together.\n\nAny chance you're free for a quick chat?\n\nThanks`,
+        friendly: `Hi ${prospectData.name},\n\nI hope you're having a great week! I wanted to follow up on my previous message about potential synergies between our work.\n\nI'd still love to connect and share some ideas. Are you available for a brief call?\n\nBest wishes`,
+        direct: `${prospectData.name},\n\nFollowing up on my business proposition. This opportunity has a time-sensitive component.\n\nCan we schedule 15 minutes this week?\n\nRegards`
+      }
+    };
+
+    const templates = emailTemplates[messageType as keyof typeof emailTemplates];
+    if (!templates) return this.generateTemplateMessage('conversation_starter', tone, prospectData);
+    
+    const template = templates[tone as keyof typeof templates] || templates.professional;
+    return template;
+  }
   async generateConnectionMessage(prospectData: ProspectData, campaignData: CampaignData): Promise<string> {
     const tone = campaignData.tone || 'professional';
     
@@ -84,6 +129,21 @@ class MessageGenerator {
     return this.generateTemplateMessage('conversation_starter', tone, prospectData);
   }
   async generateBulkMessages(prospects: ProspectData[], campaignData: CampaignData, messageType: 'connection' | 'welcome' | 'follow_up' = 'connection') {
+  async generateColdEmail(prospectData: ProspectData, campaignData: CampaignData): Promise<{ subject: string; content: string }> {
+    const tone = campaignData.tone || 'professional';
+    return {
+      subject: this.generateEmailSubject('cold_email', prospectData, tone),
+      content: this.generateEmailContent('cold_email', prospectData, tone)
+    };
+  }
+
+  async generateEmailFollowUp(prospectData: ProspectData, campaignData: CampaignData): Promise<{ subject: string; content: string }> {
+    const tone = campaignData.tone || 'professional';
+    return {
+      subject: this.generateEmailSubject('email_follow_up', prospectData, tone),
+      content: this.generateEmailContent('email_follow_up', prospectData, tone)
+    };
+  }
     const messages = [];
     
     for (const prospect of prospects) {
@@ -149,4 +209,17 @@ export async function generateAIMessage(options: MessageGenerationOptions): Prom
   }
 }
 
+export async function generateAIEmail(options: MessageGenerationOptions): Promise<{ subject: string; content: string }> {
+  const { prospectData, messageType, campaignData } = options;
+  
+  switch (messageType) {
+    case 'cold_email':
+      return await messageGenerator.generateColdEmail(prospectData, campaignData);
+    case 'email_follow_up':
+      return await messageGenerator.generateEmailFollowUp(prospectData, campaignData);
+    default:
+      // Fallback to cold email for unknown types
+      return await messageGenerator.generateColdEmail(prospectData, campaignData);
+  }
+}
 export { MessageGenerator, messageGenerator };

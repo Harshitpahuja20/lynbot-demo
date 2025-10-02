@@ -48,8 +48,14 @@ export interface User {
       port: number
       secure: boolean
     }
+    imapSettings?: {
+      host: string
+      port: number
+      secure: boolean
+    }
     isActive: boolean
     lastUsed?: string
+    lastSyncAt?: string
     dailyLimits: {
       emails: number
     }
@@ -332,6 +338,16 @@ export interface Message {
   content: string
   subject?: string
   platform: 'linkedin' | 'email' | 'other'
+  email_data?: {
+    to: string
+    from: string
+    cc?: string[]
+    bcc?: string[]
+    messageId?: string
+    inReplyTo?: string
+    references?: string[]
+    threadId?: string
+  }
   status: 'draft' | 'sending' | 'sent' | 'delivered' | 'read' | 'replied' | 'failed'
   linkedin_message_id?: string
   thread_id?: string

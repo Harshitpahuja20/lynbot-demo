@@ -700,6 +700,53 @@ const SettingsPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
+                      
+                      {/* IMAP Settings for Email Sync */}
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">IMAP Settings (for receiving emails)</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              IMAP Host
+                            </label>
+                            <input
+                              type="text"
+                              value={emailData.imapSettings?.host || ''}
+                              onChange={(e) => setEmailData(prev => ({ 
+                                ...prev, 
+                                imapSettings: { 
+                                  ...prev.imapSettings, 
+                                  host: e.target.value,
+                                  port: prev.imapSettings?.port || 993,
+                                  secure: prev.imapSettings?.secure ?? true
+                                }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="imap.example.com"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              IMAP Port
+                            </label>
+                            <input
+                              type="number"
+                              value={emailData.imapSettings?.port || 993}
+                              onChange={(e) => setEmailData(prev => ({ 
+                                ...prev, 
+                                imapSettings: { 
+                                  ...prev.imapSettings, 
+                                  host: prev.imapSettings?.host || '',
+                                  port: parseInt(e.target.value) || 993,
+                                  secure: prev.imapSettings?.secure ?? true
+                                }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="993"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     )}
 
                     <div className="pt-4">

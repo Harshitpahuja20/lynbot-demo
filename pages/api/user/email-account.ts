@@ -13,7 +13,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   }
 
   try {
-    const { email, password, provider, smtpSettings } = req.body;
+    const { email, password, provider, smtpSettings, imapSettings } = req.body;
     const userId = req.user.id;
 
     if (!email) {
@@ -70,6 +70,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         ...(encryptedPassword && { encryptedPassword }),
         provider,
         ...(smtpSettings && { smtpSettings }),
+        ...(imapSettings && { imapSettings }),
         isActive: true,
         lastUsed: new Date().toISOString()
       };
@@ -80,8 +81,10 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         encryptedPassword: encryptedPassword,
         provider: provider,
         ...(smtpSettings && { smtpSettings }),
+        ...(imapSettings && { imapSettings }),
         isActive: true,
         lastUsed: new Date().toISOString(),
+        lastSyncAt: new Date().toISOString(),
         dailyLimits: {
           emails: 50
         },
