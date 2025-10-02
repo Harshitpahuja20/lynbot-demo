@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { userOperations } from '../database';
+import { getSupabaseAdminClient } from '../supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -36,9 +36,14 @@ export function withAuth(handler: AuthenticatedHandler) {
         });
       }
       
-      const user = await userOperations.findById(decoded.id);
+      const supabase = getSupabaseAdminClient();
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', decoded.id)
+        .single();
       
-      if (!user) {
+      if (userError || !user) {
         return res.status(401).json({ 
           success: false,
           error: 'Invalid token. User not found.' 

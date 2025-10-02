@@ -132,6 +132,7 @@ const SettingsPage: React.FC = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      setError('');
       const token = sessionStorage.getItem('token');
       if (!token) {
         router.push('/signin');
@@ -150,7 +151,8 @@ const SettingsPage: React.FC = () => {
           router.push('/signin');
           return;
         }
-        throw new Error('Failed to fetch profile');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch profile (${response.status})`);
       }
 
       const data = await response.json();
@@ -203,6 +205,8 @@ const SettingsPage: React.FC = () => {
         if (data.success) {
           setAiProviders(data.providers);
         }
+      } else {
+        console.error('Failed to fetch AI providers:', response.status);
       }
     } catch (err) {
       console.error('Error fetching AI providers:', err);

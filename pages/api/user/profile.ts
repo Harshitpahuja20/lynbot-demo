@@ -1,7 +1,7 @@
 import { NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
-import { userOperations } from '../../../lib/database';
+import { getSupabaseAdminClient } from '../../../lib/supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -24,9 +24,14 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 
 async function handleGetProfile(req: AuthenticatedRequest, res: NextApiResponse) {
   try {
-    const user = await userOperations.findById(req.user.id);
+    const supabase = getSupabaseAdminClient();
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', req.user.id)
+      .single();
 
-    if (!user) {
+    if (error || !user) {
       return res.status(404).json({ 
         success: false,
         error: 'User not found' 
@@ -35,25 +40,36 @@ async function handleGetProfile(req: AuthenticatedRequest, res: NextApiResponse)
 
     // Create safe user object for response
     const safeUser = {
-      ...user,
-      password_hash: undefined, // Never send password hash
-      linkedin_accounts: user.linkedin_accounts?.map((account: any) => ({
-        ...account,
-        encryptedPassword: undefined, // Never send encrypted password
-        password: account.encryptedPassword ? '********' : '',
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      company: user.company,
+      role: user.role,
+      subscription: user.subscription || { plan: 'free', status: 'inactive' },
+      linkedin_accounts: (user.linkedin_accounts || []).map((account: any) => ({
+        email: account.email,
+        isActive: account.isActive,
         hasPassword: !!account.encryptedPassword
-      })) || [],
-      email_accounts: user.email_accounts?.map((account: any) => ({
-        ...account,
-        encryptedPassword: undefined // Never send encrypted password
-      })) || [],
+      })),
+      email_accounts: (user.email_accounts || []).map((account: any) => ({
+        email: account.email,
+        provider: account.provider,
+        isActive: account.isActive
+      })),
       api_keys: {
-        ...user.api_keys,
-        encryptedOpenAI: user.api_keys?.encryptedOpenAI ? '********' : undefined,
-        encryptedPerplexity: user.api_keys?.encryptedPerplexity ? '********' : undefined,
-        encryptedClaude: user.api_keys?.encryptedClaude ? '********' : undefined
+        openai: user.api_keys?.encryptedOpenAI ? '********' : undefined,
+        perplexity: user.api_keys?.encryptedPerplexity ? '********' : undefined,
+        claude: user.api_keys?.encryptedClaude ? '********' : undefined
+      },
+      settings: user.settings || {
+        timezone: 'UTC',
+        notifications: {
+          email: true,
+          webhook: false
+        }
       }
-    }
+    };
 
     res.json({
       success: true,
@@ -81,16 +97,22 @@ async function handleUpdateProfile(req: AuthenticatedRequest, res: NextApiRespon
       });
     }
 
-    const user = await userOperations.update(userId, {
-      first_name: first_name.trim(),
-      last_name: last_name.trim(),
-      company: company ? company.trim() : undefined
-    });
+    const supabase = getSupabaseAdminClient();
+    const { data: user, error } = await supabase
+      .from('users')
+      .update({
+        first_name: first_name.trim(),
+        last_name: last_name.trim(),
+        company: company ? company.trim() : null
+      })
+      .eq('id', userId)
+      .select()
+      .single();
 
-    if (!user) {
+    if (error || !user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: 'User not found or failed to update'
       });
     }
 
