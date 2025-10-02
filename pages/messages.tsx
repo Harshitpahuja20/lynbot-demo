@@ -238,6 +238,7 @@ const MessagesPage: React.FC = () => {
       setGeneratingDraft(false);
     }
   };
+
   const markMessageAsRead = async (messageId: string) => {
     try {
       await fetch(`/api/messages/${messageId}/read`, {

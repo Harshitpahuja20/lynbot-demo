@@ -128,22 +128,8 @@ class MessageGenerator {
     const tone = campaignData.tone || 'professional';
     return this.generateTemplateMessage('conversation_starter', tone, prospectData);
   }
-  async generateBulkMessages(prospects: ProspectData[], campaignData: CampaignData, messageType: 'connection' | 'welcome' | 'follow_up' = 'connection') {
-  async generateColdEmail(prospectData: ProspectData, campaignData: CampaignData): Promise<{ subject: string; content: string }> {
-    const tone = campaignData.tone || 'professional';
-    return {
-      subject: this.generateEmailSubject('cold_email', prospectData, tone),
-      content: this.generateEmailContent('cold_email', prospectData, tone)
-    };
-  }
 
-  async generateEmailFollowUp(prospectData: ProspectData, campaignData: CampaignData): Promise<{ subject: string; content: string }> {
-    const tone = campaignData.tone || 'professional';
-    return {
-      subject: this.generateEmailSubject('email_follow_up', prospectData, tone),
-      content: this.generateEmailContent('email_follow_up', prospectData, tone)
-    };
-  }
+  async generateBulkMessages(prospects: ProspectData[], campaignData: CampaignData, messageType: 'connection' | 'welcome' | 'follow_up' = 'connection') {
     const messages = [];
     
     for (const prospect of prospects) {
@@ -183,6 +169,22 @@ class MessageGenerator {
     }
     
     return messages;
+  }
+
+  async generateColdEmail(prospectData: ProspectData, campaignData: CampaignData): Promise<{ subject: string; content: string }> {
+    const tone = campaignData.tone || 'professional';
+    return {
+      subject: this.generateEmailSubject('cold_email', prospectData, tone),
+      content: this.generateEmailContent('cold_email', prospectData, tone)
+    };
+  }
+
+  async generateEmailFollowUp(prospectData: ProspectData, campaignData: CampaignData): Promise<{ subject: string; content: string }> {
+    const tone = campaignData.tone || 'professional';
+    return {
+      subject: this.generateEmailSubject('email_follow_up', prospectData, tone),
+      content: this.generateEmailContent('email_follow_up', prospectData, tone)
+    };
   }
 }
 

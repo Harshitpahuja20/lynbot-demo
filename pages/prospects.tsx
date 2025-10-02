@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import ExportModal from '../components/ExportModal';
 import { 
   Users, 
   Plus, 
@@ -16,7 +17,8 @@ import {
   ExternalLink,
   Building,
   MapPin,
-  Briefcase
+  Briefcase,
+  Download
 } from 'lucide-react';
 
 interface Campaign {
@@ -72,6 +74,7 @@ const ProspectsPage: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   
   // Form data for create/edit
   const [formData, setFormData] = useState({
@@ -381,13 +384,22 @@ const ProspectsPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Prospects</h1>
             <p className="text-gray-600">Manage your LinkedIn prospects and connections</p>
           </div>
-          <button 
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Prospect
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setShowExportModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </button>
+            <button 
+              onClick={() => setShowCreateModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Prospect
+            </button>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -1134,6 +1146,14 @@ const ProspectsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        campaigns={campaigns}
+        selectedCampaignId={filterCampaign !== 'all' ? filterCampaign : undefined}
+      />
     </Layout>
   );
 };
