@@ -370,9 +370,9 @@ const MessagesPage: React.FC = () => {
   const filteredConversations = conversations.filter(conversation => {
     const platformMatch = activePlatform === 'all' || conversation.platform === activePlatform;
     const searchMatch = 
-    conversation.prospect.linkedinData.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (conversation.prospect.linkedinData.company && 
-       conversation.prospect.linkedinData.company.toLowerCase().includes(searchTerm.toLowerCase()));
+      conversation.prospect.linkedinData.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (conversation.prospect.linkedinData.company && 
+         conversation.prospect.linkedinData.company.toLowerCase().includes(searchTerm.toLowerCase()));
     
     return platformMatch && searchMatch;
   });
@@ -404,6 +404,7 @@ const MessagesPage: React.FC = () => {
             </button>
           </div>
         )}
+      </div>
 
         <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex">
           {/* Conversations List */}
@@ -412,7 +413,7 @@ const MessagesPage: React.FC = () => {
             <div className="p-4 border-b border-gray-200">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
-                <button className="text-gray-400 hover:text-gray-600">
+                <div className="flex items-center space-x-2">
                   <button
                     onClick={handleSyncEmails}
                     disabled={syncingEmails}
@@ -428,8 +429,10 @@ const MessagesPage: React.FC = () => {
                   >
                     <Plus className="h-4 w-4" />
                   </button>
-                  <MoreVertical className="h-5 w-5" />
-                </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md">
+                    <MoreVertical className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
               
               {/* Platform Selector */}
