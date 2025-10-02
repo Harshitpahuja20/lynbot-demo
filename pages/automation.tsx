@@ -112,7 +112,7 @@ const AutomationPage: React.FC = () => {
     workingDays: [1, 2, 3, 4, 5],
     dailyLimits: {
       connections: 50,
-      messages: 25,
+      messages: 80,
       profileViews: 100,
       emails: 20
     }
