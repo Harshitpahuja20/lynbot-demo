@@ -228,15 +228,15 @@ export interface Prospect {
   }>
   automation: {
     connectionRequestSent: boolean
-    connectionRequestDate?: string
+    connectionRequestDate?: string | null
     welcomeMessageSent: boolean
-    welcomeMessageDate?: string
+    welcomeMessageDate?: string | null
     followUpsSent: number
-    lastFollowUpDate?: string
-    nextScheduledAction?: 'connection_request' | 'welcome_message' | 'follow_up' | 'withdraw_invitation'
-    nextScheduledDate?: string
+    lastFollowUpDate?: string | null
+    nextScheduledAction?: 'connection_request' | 'welcome_message' | 'follow_up' | 'withdraw_invitation' | null
+    nextScheduledDate?: string | null
     automationPaused: boolean
-    pauseReason?: string
+    pauseReason?: string | null
   }
   scoring: {
     leadScore: number
@@ -249,7 +249,7 @@ export interface Prospect {
       profileCompleteness: number
       activityLevel: number
     }
-    lastCalculated?: string
+    lastCalculated?: string | null
   }
   tags: string[]
   notes: Array<{
