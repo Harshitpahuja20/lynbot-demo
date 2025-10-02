@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { getCurrentUser } from '../utils/auth';
@@ -73,7 +73,6 @@ interface AIProvider {
 
 const SettingsPage: React.FC = () => {
   const router = useRouter();
-  const user = getCurrentUser();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [aiProviders, setAiProviders] = useState<Record<string, AIProvider>>({});
   const [loading, setLoading] = useState(true);
@@ -81,6 +80,10 @@ const SettingsPage: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
+  const [initialized, setInitialized] = useState(false);
+
+  // Get user once and memoize it
+  const user = useMemo(() => getCurrentUser(), []);
 
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -119,64 +122,17 @@ const SettingsPage: React.FC = () => {
     apiKey: false
   });
 
-  useEffect(() => {
-    console.log('Settings page mounted, user:', user);
-    
-    if (!user) {
-      console.log('No user found, redirecting to signin');
-      router.push('/signin');
-      return;
-    }
-    
-    // Initialize data fetching
-    initializeSettings();
-  }, [user, router]);
-
-  const initializeSettings = async () => {
-    console.log('Initializing settings...');
-    setLoading(true);
-    setError('');
-    
-    try {
-      // Fetch both profile and AI providers in parallel
-      const results = await Promise.allSettled([
-        fetchProfile(),
-        fetchAIProviders()
-      ]);
-      
-      // Check if any critical operations failed
-      const profileResult = results[0];
-      const aiResult = results[1];
-      
-      if (profileResult.status === 'rejected') {
-        console.error('Profile fetch failed:', profileResult.reason);
-        setError('Failed to load profile data');
-      }
-      
-      if (aiResult.status === 'rejected') {
-        console.error('AI providers fetch failed:', aiResult.reason);
-        // Don't set error for AI providers as it's not critical
-      }
-      
-    } catch (err) {
-      console.error('Error initializing settings:', err);
-      setError('Failed to initialize settings');
-    } finally {
-      console.log('Settings initialization complete');
-      setLoading(false);
-    }
-  };
-
-  const fetchProfile = async () => {
-    console.log('Fetching profile...');
+  // Memoized fetch functions to prevent infinite loops
+  const fetchProfile = useCallback(async () => {
+    console.log('fetchProfile called');
     
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       
       if (!token) {
-        console.log('No token found');
+        console.log('No token found, redirecting to signin');
         router.push('/signin');
-        return;
+        return null;
       }
 
       console.log('Making profile API call...');
@@ -193,7 +149,7 @@ const SettingsPage: React.FC = () => {
         if (response.status === 401) {
           console.log('Unauthorized, redirecting to signin');
           router.push('/signin');
-          return;
+          return null;
         }
         
         const errorText = await response.text();
@@ -205,32 +161,7 @@ const SettingsPage: React.FC = () => {
       console.log('Profile data received:', data);
       
       if (data.success && data.user) {
-        console.log('Setting profile data...');
-        setProfile(data.user);
-        
-        // Update form states
-        setProfileForm({
-          first_name: data.user.first_name || '',
-          last_name: data.user.last_name || '',
-          company: data.user.company || ''
-        });
-
-        setNotificationForm({
-          email: data.user.settings?.notifications?.email ?? true,
-          webhook: data.user.settings?.notifications?.webhook ?? false
-        });
-
-        if (data.user.settings?.aiProvider) {
-          setAiForm(prev => ({
-            ...prev,
-            provider: data.user.settings.aiProvider.provider,
-            model: data.user.settings.aiProvider.model,
-            temperature: data.user.settings.aiProvider.temperature,
-            maxTokens: data.user.settings.aiProvider.maxTokens
-          }));
-        }
-        
-        console.log('Profile data set successfully');
+        return data.user;
       } else {
         console.error('Invalid profile response:', data);
         throw new Error('Invalid profile data received');
@@ -239,17 +170,17 @@ const SettingsPage: React.FC = () => {
       console.error('Error in fetchProfile:', err);
       throw err;
     }
-  };
+  }, [router]);
 
-  const fetchAIProviders = async () => {
-    console.log('Fetching AI providers...');
+  const fetchAIProviders = useCallback(async () => {
+    console.log('fetchAIProviders called');
     
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       
       if (!token) {
         console.log('No token for AI providers');
-        return;
+        return {};
       }
 
       const response = await fetch('/api/ai/providers', {
@@ -265,17 +196,105 @@ const SettingsPage: React.FC = () => {
         const data = await response.json();
         console.log('AI providers data:', data);
         if (data.success) {
-          setAiProviders(data.providers);
-          console.log('AI providers set successfully');
+          return data.providers;
         }
       } else {
         console.error('Failed to fetch AI providers:', response.status);
       }
+      return {};
     } catch (err) {
       console.error('Error fetching AI providers:', err);
-      // Don't throw - AI providers are not critical for settings page
+      return {};
     }
-  };
+  }, []);
+
+  // Initialize settings only once
+  const initializeSettings = useCallback(async () => {
+    if (initialized) {
+      console.log('Settings already initialized, skipping...');
+      return;
+    }
+
+    console.log('Initializing settings...');
+    setLoading(true);
+    setError('');
+    
+    try {
+      // Check user first
+      if (!user) {
+        console.log('No user found, redirecting to signin');
+        router.push('/signin');
+        return;
+      }
+
+      console.log('User found:', user);
+
+      // Fetch profile and AI providers
+      const [profileData, providersData] = await Promise.all([
+        fetchProfile().catch(err => {
+          console.error('Profile fetch failed:', err);
+          return null;
+        }),
+        fetchAIProviders().catch(err => {
+          console.error('AI providers fetch failed:', err);
+          return {};
+        })
+      ]);
+
+      if (profileData) {
+        console.log('Setting profile data...');
+        setProfile(profileData);
+        
+        // Update form states
+        setProfileForm({
+          first_name: profileData.first_name || '',
+          last_name: profileData.last_name || '',
+          company: profileData.company || ''
+        });
+
+        setNotificationForm({
+          email: profileData.settings?.notifications?.email ?? true,
+          webhook: profileData.settings?.notifications?.webhook ?? false
+        });
+
+        if (profileData.settings?.aiProvider) {
+          setAiForm(prev => ({
+            ...prev,
+            provider: profileData.settings.aiProvider.provider,
+            model: profileData.settings.aiProvider.model,
+            temperature: profileData.settings.aiProvider.temperature,
+            maxTokens: profileData.settings.aiProvider.maxTokens
+          }));
+        }
+        
+        console.log('Profile data set successfully');
+      } else {
+        console.log('No profile data received');
+        setError('Failed to load profile data');
+      }
+
+      setAiProviders(providersData);
+      console.log('AI providers set:', providersData);
+
+      setInitialized(true);
+      console.log('Settings initialization complete');
+      
+    } catch (err) {
+      console.error('Error initializing settings:', err);
+      setError('Failed to initialize settings');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, router, fetchProfile, fetchAIProviders, initialized]);
+
+  // Only run initialization once when component mounts
+  useEffect(() => {
+    if (!initialized && user) {
+      initializeSettings();
+    } else if (!user) {
+      router.push('/signin');
+    }
+  }, [user, initialized, initializeSettings, router]);
 
   const handleUpdateProfile = async () => {
     console.log('Updating profile...');
@@ -357,7 +376,12 @@ const SettingsPage: React.FC = () => {
 
       setSuccess('LinkedIn account saved successfully!');
       setLinkedinForm({ email: '', password: '' });
-      await fetchProfile();
+      
+      // Refresh profile data
+      const updatedProfile = await fetchProfile();
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save LinkedIn account');
     } finally {
@@ -398,7 +422,12 @@ const SettingsPage: React.FC = () => {
 
       setSuccess('Email account saved successfully!');
       setEmailForm({ email: '', password: '', provider: 'gmail' });
-      await fetchProfile();
+      
+      // Refresh profile data
+      const updatedProfile = await fetchProfile();
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save email account');
     } finally {
@@ -439,7 +468,12 @@ const SettingsPage: React.FC = () => {
 
       setSuccess('AI settings saved successfully!');
       setAiForm(prev => ({ ...prev, apiKey: '' }));
-      await fetchProfile();
+      
+      // Refresh profile data
+      const updatedProfile = await fetchProfile();
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save AI settings');
     } finally {
@@ -474,7 +508,12 @@ const SettingsPage: React.FC = () => {
       }
 
       setSuccess('Notification settings saved successfully!');
-      await fetchProfile();
+      
+      // Refresh profile data
+      const updatedProfile = await fetchProfile();
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save notification settings');
     } finally {
@@ -505,7 +544,11 @@ const SettingsPage: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Settings</h3>
           <p className="text-gray-600 mb-4">Unable to load your profile data.</p>
           <button
-            onClick={initializeSettings}
+            onClick={() => {
+              setInitialized(false);
+              setLoading(true);
+              initializeSettings();
+            }}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
             Try Again
