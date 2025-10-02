@@ -133,7 +133,7 @@ const SettingsPage: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) {
         router.push('/signin');
         return;
@@ -190,7 +190,7 @@ const SettingsPage: React.FC = () => {
 
   const fetchAIProviders = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) return;
 
       const response = await fetch('/api/ai/providers', {
@@ -219,7 +219,7 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) {
         router.push('/signin');
         return;
@@ -267,7 +267,7 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) {
         router.push('/signin');
         return;
@@ -308,7 +308,7 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) {
         router.push('/signin');
         return;
@@ -349,7 +349,7 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) {
         router.push('/signin');
         return;
@@ -385,7 +385,7 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) {
         router.push('/signin');
         return;

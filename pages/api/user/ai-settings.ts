@@ -1,8 +1,10 @@
 import { NextApiResponse } from 'next';
-import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
-import { userOperations } from '../../../lib/database';
+import { NextApiRequest } from 'next';
+import jwt from 'jsonwebtoken';
+import { getSupabaseAdminClient } from '../../../lib/supabase';
 import crypto from 'crypto';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'your-encryption-secret-key-change-this';
 const ALGORITHM = 'aes-256-gcm';
 
@@ -29,7 +31,7 @@ function decrypt(encryptedText: string): string {
   return decrypted;
 }
 
-async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({
@@ -39,8 +41,19 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   }
 
   try {
+    // Authenticate user
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const userId = decoded.id;
+
     const { provider, model, apiKey, temperature, maxTokens } = req.body;
-    const userId = req.user.id;
 
     if (!provider || !model || !apiKey) {
       return res.status(400).json({
@@ -82,8 +95,14 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     const encryptedApiKey = encrypt(apiKey);
 
     // Get current user
-    const user = await userOperations.findById(userId);
-    if (!user) {
+    const supabase = getSupabaseAdminClient();
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -115,12 +134,23 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       maxTokens: maxTokens || 1000
     };
 
-    await userOperations.update(userId, {
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
       api_keys: updatedApiKeys,
       settings: updatedSettings
-    });
+      })
+      .eq('id', userId);
 
-    console.log(`AI settings updated for user: ${req.user.email} - Provider: ${provider}, Model: ${model}`);
+    if (updateError) {
+      console.error('Error updating user:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to save AI settings'
+      });
+    }
+
+    console.log(`AI settings updated for user: ${user.email} - Provider: ${provider}, Model: ${model}`);
 
     res.json({
       success: true,
@@ -135,5 +165,3 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     });
   }
 }
-
-export default withAuth(handler);

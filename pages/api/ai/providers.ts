@@ -1,7 +1,25 @@
-import { NextApiResponse } from 'next';
-import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
+import { NextApiRequest, NextApiResponse } from 'next';
+import jwt from 'jsonwebtoken';
 
-async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Simple auth check
+async function authenticateUser(req: NextApiRequest): Promise<boolean> {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token) {
+    return false;
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).json({
@@ -11,6 +29,15 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   }
 
   try {
+    // Check authentication
+    const isAuthenticated = await authenticateUser(req);
+    if (!isAuthenticated) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
     const providers = {
       openai: {
         name: 'OpenAI',
@@ -75,12 +102,10 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     });
 
   } catch (error) {
-    console.error('Error fetching AI providers:', error);
+    console.error('Error in AI providers API:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch AI providers'
     });
   }
 }
-
-export default withAuth(handler);

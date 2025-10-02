@@ -1,9 +1,12 @@
 import { NextApiResponse } from 'next';
+import { NextApiRequest } from 'next';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
-import { userOperations } from '../../../lib/database';
+import { getSupabaseAdminClient } from '../../../lib/supabase';
 
-async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({
@@ -13,8 +16,19 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   }
 
   try {
+    // Authenticate user
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const userId = decoded.id;
+
     const { email, password } = req.body;
-    const userId = req.user.id;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -37,8 +51,14 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     const encryptedPassword = await bcrypt.hash(password, salt);
 
     // Find user and update LinkedIn account
-    const user = await userOperations.findById(userId);
-    if (!user) {
+    const supabase = getSupabaseAdminClient();
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -84,11 +104,22 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       });
     }
 
-    await userOperations.update(userId, {
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
       linkedin_accounts: updatedLinkedInAccounts
-    });
+      })
+      .eq('id', userId);
 
-    console.log(`LinkedIn account saved for user: ${req.user.email}`);
+    if (updateError) {
+      console.error('Error updating user:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to save LinkedIn account'
+      });
+    }
+
+    console.log(`LinkedIn account saved for user: ${user.email}`);
 
     res.json({
       success: true,
@@ -103,5 +134,3 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     });
   }
 }
-
-export default withAuth(handler);

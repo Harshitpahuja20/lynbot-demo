@@ -1,8 +1,11 @@
 import { NextApiResponse } from 'next';
-import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
-import { userOperations } from '../../../lib/database';
+import { NextApiRequest } from 'next';
+import jwt from 'jsonwebtoken';
+import { getSupabaseAdminClient } from '../../../lib/supabase';
 
-async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PUT') {
     res.setHeader('Allow', ['PUT']);
     return res.status(405).json({
@@ -12,8 +15,19 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   }
 
   try {
+    // Authenticate user
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const userId = decoded.id;
+
     const { notifications } = req.body;
-    const userId = req.user.id;
 
     if (!notifications || typeof notifications !== 'object') {
       return res.status(400).json({
@@ -23,9 +37,14 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     }
 
     // Get current user
-    const currentUser = await userOperations.findById(userId);
+    const supabase = getSupabaseAdminClient();
+    const { data: currentUser, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
     
-    if (!currentUser) {
+    if (userError || !currentUser) {
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -33,21 +52,26 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     }
 
     // Update user with new notification settings
-    const user = await userOperations.update(userId, {
+    const { data: user, error: updateError } = await supabase
+      .from('users')
+      .update({
       settings: {
         ...currentUser.settings,
         notifications
       }
-    });
+      })
+      .eq('id', userId)
+      .select()
+      .single();
 
-    if (!user) {
+    if (updateError || !user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: 'Failed to update notification settings'
       });
     }
 
-    console.log(`Notification settings updated for user: ${req.user.email}`);
+    console.log(`Notification settings updated for user: ${user.email}`);
 
     res.json({
       success: true,
@@ -63,5 +87,3 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     });
   }
 }
-
-export default withAuth(handler);
