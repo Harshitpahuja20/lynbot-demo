@@ -120,39 +120,66 @@ const SettingsPage: React.FC = () => {
   });
 
   useEffect(() => {
+    console.log('Settings page mounted, user:', user);
+    
     if (!user) {
+      console.log('No user found, redirecting to signin');
       router.push('/signin');
       return;
     }
     
-    // Add delay to ensure component is mounted
-    const timer = setTimeout(() => {
-      fetchProfile();
-      fetchAIProviders();
-    }, 100);
-    
-    return () => clearTimeout(timer);
+    // Initialize data fetching
+    initializeSettings();
   }, [user, router]);
 
-  const fetchProfile = async () => {
+  const initializeSettings = async () => {
+    console.log('Initializing settings...');
+    setLoading(true);
+    setError('');
+    
     try {
-      setLoading(true);
-      setError('');
+      // Fetch both profile and AI providers in parallel
+      const results = await Promise.allSettled([
+        fetchProfile(),
+        fetchAIProviders()
+      ]);
       
-      // Get token with fallback
-      let token = null;
-      if (typeof window !== 'undefined') {
-        token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      // Check if any critical operations failed
+      const profileResult = results[0];
+      const aiResult = results[1];
+      
+      if (profileResult.status === 'rejected') {
+        console.error('Profile fetch failed:', profileResult.reason);
+        setError('Failed to load profile data');
       }
       
+      if (aiResult.status === 'rejected') {
+        console.error('AI providers fetch failed:', aiResult.reason);
+        // Don't set error for AI providers as it's not critical
+      }
+      
+    } catch (err) {
+      console.error('Error initializing settings:', err);
+      setError('Failed to initialize settings');
+    } finally {
+      console.log('Settings initialization complete');
+      setLoading(false);
+    }
+  };
+
+  const fetchProfile = async () => {
+    console.log('Fetching profile...');
+    
+    try {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      
       if (!token) {
-        console.log('No token found, redirecting to signin');
+        console.log('No token found');
         router.push('/signin');
         return;
       }
 
-      console.log('Fetching profile with token:', token ? 'present' : 'missing');
-
+      console.log('Making profile API call...');
       const response = await fetch('/api/user/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -169,20 +196,16 @@ const SettingsPage: React.FC = () => {
           return;
         }
         
-        let errorMessage = `Failed to fetch profile (${response.status})`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (jsonError) {
-          console.error('Error parsing error response:', jsonError);
-        }
-        throw new Error(errorMessage);
+        const errorText = await response.text();
+        console.error('Profile API error:', response.status, errorText);
+        throw new Error(`Failed to fetch profile (${response.status})`);
       }
 
       const data = await response.json();
-      console.log('Profile data received:', data.success ? 'success' : 'failed');
+      console.log('Profile data received:', data);
       
-      if (data.success) {
+      if (data.success && data.user) {
+        console.log('Setting profile data...');
         setProfile(data.user);
         
         // Update form states
@@ -206,28 +229,28 @@ const SettingsPage: React.FC = () => {
             maxTokens: data.user.settings.aiProvider.maxTokens
           }));
         }
+        
+        console.log('Profile data set successfully');
+      } else {
+        console.error('Invalid profile response:', data);
+        throw new Error('Invalid profile data received');
       }
     } catch (err) {
       console.error('Error in fetchProfile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch profile');
-    } finally {
-      setLoading(false);
+      throw err;
     }
   };
 
   const fetchAIProviders = async () => {
+    console.log('Fetching AI providers...');
+    
     try {
-      let token = null;
-      if (typeof window !== 'undefined') {
-        token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      }
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       
       if (!token) {
         console.log('No token for AI providers');
         return;
       }
-
-      console.log('Fetching AI providers');
 
       const response = await fetch('/api/ai/providers', {
         headers: {
@@ -240,28 +263,28 @@ const SettingsPage: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('AI providers data:', data.success ? 'success' : 'failed');
+        console.log('AI providers data:', data);
         if (data.success) {
           setAiProviders(data.providers);
+          console.log('AI providers set successfully');
         }
       } else {
-        console.error('Failed to fetch AI providers:', response.status, await response.text());
+        console.error('Failed to fetch AI providers:', response.status);
       }
     } catch (err) {
       console.error('Error fetching AI providers:', err);
+      // Don't throw - AI providers are not critical for settings page
     }
   };
 
   const handleUpdateProfile = async () => {
+    console.log('Updating profile...');
     setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      let token = null;
-      if (typeof window !== 'undefined') {
-        token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      }
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       
       if (!token) {
         router.push('/signin');
@@ -289,13 +312,12 @@ const SettingsPage: React.FC = () => {
         
         // Update token if provided
         if (data.token) {
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('token', data.token);
-          }
+          localStorage.setItem('token', data.token);
           sessionStorage.setItem('token', data.token);
         }
       }
     } catch (err) {
+      console.error('Error updating profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to update profile');
     } finally {
       setSaving(false);
@@ -460,7 +482,9 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  // Show loading state
   if (loading) {
+    console.log('Rendering loading state...');
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
@@ -470,6 +494,28 @@ const SettingsPage: React.FC = () => {
       </Layout>
     );
   }
+
+  // Show error state if no profile loaded
+  if (!profile) {
+    console.log('No profile data, showing error state');
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-64">
+          <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Settings</h3>
+          <p className="text-gray-600 mb-4">Unable to load your profile data.</p>
+          <button
+            onClick={initializeSettings}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  console.log('Rendering settings page with profile:', profile);
 
   return (
     <Layout>
@@ -602,19 +648,19 @@ const SettingsPage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-500">Email:</span>
-                        <span className="ml-2 font-medium">{profile?.email}</span>
+                        <span className="ml-2 font-medium">{profile.email}</span>
                       </div>
                       <div>
                         <span className="text-gray-500">Role:</span>
-                        <span className="ml-2 font-medium capitalize">{profile?.role}</span>
+                        <span className="ml-2 font-medium capitalize">{profile.role}</span>
                       </div>
                       <div>
                         <span className="text-gray-500">Plan:</span>
-                        <span className="ml-2 font-medium capitalize">{profile?.subscription?.plan}</span>
+                        <span className="ml-2 font-medium capitalize">{profile.subscription?.plan}</span>
                       </div>
                       <div>
                         <span className="text-gray-500">Status:</span>
-                        <span className="ml-2 font-medium capitalize">{profile?.subscription?.status}</span>
+                        <span className="ml-2 font-medium capitalize">{profile.subscription?.status}</span>
                       </div>
                     </div>
                   </div>
@@ -629,7 +675,7 @@ const SettingsPage: React.FC = () => {
                   <h3 className="text-lg font-medium text-gray-900 mb-4">LinkedIn Account</h3>
                   
                   {/* Current LinkedIn Accounts */}
-                  {profile?.linkedin_accounts && profile.linkedin_accounts.length > 0 && (
+                  {profile.linkedin_accounts && profile.linkedin_accounts.length > 0 && (
                     <div className="mb-6">
                       <h4 className="text-md font-medium text-gray-900 mb-3">Connected Accounts</h4>
                       <div className="space-y-2">
@@ -730,7 +776,7 @@ const SettingsPage: React.FC = () => {
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Email Accounts</h3>
                   
                   {/* Current Email Accounts */}
-                  {profile?.email_accounts && profile.email_accounts.length > 0 && (
+                  {profile.email_accounts && profile.email_accounts.length > 0 && (
                     <div className="mb-6">
                       <h4 className="text-md font-medium text-gray-900 mb-3">Connected Accounts</h4>
                       <div className="space-y-2">
@@ -834,7 +880,7 @@ const SettingsPage: React.FC = () => {
                   <h3 className="text-lg font-medium text-gray-900 mb-4">AI Configuration</h3>
                   
                   {/* Current AI Settings */}
-                  {profile?.settings?.aiProvider && (
+                  {profile.settings?.aiProvider && (
                     <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                       <h4 className="text-md font-medium text-purple-900 mb-2">Current Configuration</h4>
                       <div className="text-sm text-purple-700">
@@ -881,7 +927,9 @@ const SettingsPage: React.FC = () => {
                           <option key={model.id} value={model.id}>
                             {model.name}
                           </option>
-                        ))}
+                        )) || (
+                          <option value={aiForm.model}>{aiForm.model}</option>
+                        )}
                       </select>
                     </div>
                     <div className="md:col-span-2">
