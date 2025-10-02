@@ -82,15 +82,15 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
               interactions: [],
               automation: {
                 connectionRequestSent: false,
-                connectionRequestDate: undefined,
+                connectionRequestDate: null,
                 welcomeMessageSent: false,
-                welcomeMessageDate: undefined,
+                welcomeMessageDate: null,
                 followUpsSent: 0,
-                lastFollowUpDate: undefined,
-                nextScheduledAction: undefined,
-                nextScheduledDate: undefined,
+                lastFollowUpDate: null,
+                nextScheduledAction: null,
+                nextScheduledDate: null,
                 automationPaused: false,
-                pauseReason: undefined
+                pauseReason: null
               },
               scoring: {
                 leadScore: 0,
@@ -103,7 +103,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
                   profileCompleteness: 0,
                   activityLevel: 0
                 },
-                lastCalculated: undefined
+                lastCalculated: null
               },
               tags: [],
               notes: [],
