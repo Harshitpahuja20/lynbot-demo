@@ -125,19 +125,33 @@ const SettingsPage: React.FC = () => {
       return;
     }
     
-    fetchProfile();
-    fetchAIProviders();
+    // Add delay to ensure component is mounted
+    const timer = setTimeout(() => {
+      fetchProfile();
+      fetchAIProviders();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [user, router]);
 
   const fetchProfile = async () => {
     try {
       setLoading(true);
       setError('');
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      
+      // Get token with fallback
+      let token = null;
+      if (typeof window !== 'undefined') {
+        token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      }
+      
       if (!token) {
+        console.log('No token found, redirecting to signin');
         router.push('/signin');
         return;
       }
+
+      console.log('Fetching profile with token:', token ? 'present' : 'missing');
 
       const response = await fetch('/api/user/profile', {
         headers: {
@@ -146,16 +160,28 @@ const SettingsPage: React.FC = () => {
         }
       });
 
+      console.log('Profile response status:', response.status);
+
       if (!response.ok) {
         if (response.status === 401) {
+          console.log('Unauthorized, redirecting to signin');
           router.push('/signin');
           return;
         }
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to fetch profile (${response.status})`);
+        
+        let errorMessage = `Failed to fetch profile (${response.status})`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (jsonError) {
+          console.error('Error parsing error response:', jsonError);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      console.log('Profile data received:', data.success ? 'success' : 'failed');
+      
       if (data.success) {
         setProfile(data.user);
         
@@ -182,6 +208,7 @@ const SettingsPage: React.FC = () => {
         }
       }
     } catch (err) {
+      console.error('Error in fetchProfile:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch profile');
     } finally {
       setLoading(false);
@@ -190,8 +217,17 @@ const SettingsPage: React.FC = () => {
 
   const fetchAIProviders = async () => {
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      if (!token) return;
+      let token = null;
+      if (typeof window !== 'undefined') {
+        token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      }
+      
+      if (!token) {
+        console.log('No token for AI providers');
+        return;
+      }
+
+      console.log('Fetching AI providers');
 
       const response = await fetch('/api/ai/providers', {
         headers: {
@@ -200,13 +236,16 @@ const SettingsPage: React.FC = () => {
         }
       });
 
+      console.log('AI providers response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('AI providers data:', data.success ? 'success' : 'failed');
         if (data.success) {
           setAiProviders(data.providers);
         }
       } else {
-        console.error('Failed to fetch AI providers:', response.status);
+        console.error('Failed to fetch AI providers:', response.status, await response.text());
       }
     } catch (err) {
       console.error('Error fetching AI providers:', err);
@@ -219,7 +258,11 @@ const SettingsPage: React.FC = () => {
     setSuccess('');
 
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      let token = null;
+      if (typeof window !== 'undefined') {
+        token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      }
+      
       if (!token) {
         router.push('/signin');
         return;
@@ -246,6 +289,9 @@ const SettingsPage: React.FC = () => {
         
         // Update token if provided
         if (data.token) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('token', data.token);
+          }
           sessionStorage.setItem('token', data.token);
         }
       }

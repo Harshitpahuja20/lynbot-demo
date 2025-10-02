@@ -4,46 +4,47 @@ import { getSupabaseAdminClient } from '../../../lib/supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Simple auth check without middleware
-async function authenticateUser(req: NextApiRequest): Promise<any> {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    throw new Error('No token provided');
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    
-    // Get user from database
-    const supabase = getSupabaseAdminClient();
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', decoded.id)
-      .single();
-    
-    if (error || !user) {
-      throw new Error('User not found');
-    }
-
-    if (!user.is_active) {
-      throw new Error('Account is deactivated');
-    }
-
-    return user;
-  } catch (error) {
-    throw new Error('Invalid token');
-  }
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Authenticate user
-    const user = await authenticateUser(req);
+    // Get token from headers
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'No token provided'
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Verify JWT token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as any;
+    } catch (jwtError) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token'
+      });
+    }
 
     if (req.method === 'GET') {
-      // Return user profile data
+      // Get user profile
+      const supabase = getSupabaseAdminClient();
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', decoded.id)
+        .single();
+
+      if (error || !user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
+      }
+
+      // Return safe user data
       const safeUser = {
         id: user.id,
         email: user.email,
@@ -54,13 +55,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         subscription: user.subscription || { plan: 'free', status: 'inactive' },
         linkedin_accounts: (user.linkedin_accounts || []).map((account: any) => ({
           email: account.email,
-          isActive: account.isActive,
+          isActive: account.isActive || false,
           hasPassword: !!account.encryptedPassword
         })),
         email_accounts: (user.email_accounts || []).map((account: any) => ({
           email: account.email,
           provider: account.provider,
-          isActive: account.isActive
+          isActive: account.isActive || false
         })),
         api_keys: {
           openai: user.api_keys?.encryptedOpenAI ? '********' : undefined,
@@ -82,6 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
     } else if (req.method === 'PUT') {
+      // Update user profile
       const { first_name, last_name, company } = req.body;
 
       if (!first_name || !last_name) {
@@ -99,12 +101,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           last_name: last_name.trim(),
           company: company ? company.trim() : null
         })
-        .eq('id', user.id)
+        .eq('id', decoded.id)
         .select()
         .single();
 
       if (error) {
-        console.error('Error updating user:', error);
         return res.status(500).json({
           success: false,
           error: 'Failed to update profile'
@@ -112,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Generate new JWT token
-      const token = jwt.sign(
+      const newToken = jwt.sign(
         { 
           id: updatedUser.id, 
           email: updatedUser.email, 
@@ -131,7 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         success: true,
         message: 'Profile updated successfully',
         user: updatedUser,
-        token
+        token: newToken
       });
 
     } else {
@@ -144,14 +145,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Profile API error:', error);
-    
-    if (error instanceof Error && error.message.includes('token')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication failed'
-      });
-    }
-
     return res.status(500).json({
       success: false,
       error: 'Internal server error'

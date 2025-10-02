@@ -3,22 +3,6 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Simple auth check
-async function authenticateUser(req: NextApiRequest): Promise<boolean> {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    return false;
-  }
-
-  try {
-    jwt.verify(token, JWT_SECRET);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
@@ -29,12 +13,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Check authentication
-    const isAuthenticated = await authenticateUser(req);
-    if (!isAuthenticated) {
+    // Simple auth check
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
         error: 'Authentication required'
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (jwtError) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token'
       });
     }
 
