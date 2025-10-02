@@ -182,7 +182,7 @@ class EmailService {
     limit?: number;
     folder?: string;
   } = {}): Promise<EmailMessage[]> {
-    let client: ImapFlow | null = null;
+    let client: any = null;
     
     try {
       client = await this.createImapClient(emailAccount);
@@ -209,19 +209,15 @@ class EmailService {
         for await (const message of messages) {
           try {
             const envelope = message.envelope;
-            const bodyParts = message.bodyStructure;
             
             // Get text content
             let textContent = '';
             let htmlContent = '';
             
-            if (bodyParts) {
-              // Simple text extraction - in production, you'd want more robust parsing
-              if (message.source) {
-                const sourceStr = message.source.toString();
-                textContent = this.extractTextFromEmail(sourceStr);
-                htmlContent = this.extractHtmlFromEmail(sourceStr);
-              }
+            if (message.source) {
+              const sourceStr = message.source.toString();
+              textContent = this.extractTextFromEmail(sourceStr);
+              htmlContent = this.extractHtmlFromEmail(sourceStr);
             }
 
             const emailMessage: EmailMessage = {

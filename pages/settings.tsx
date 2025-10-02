@@ -933,6 +933,142 @@ const SettingsPage: React.FC = () => {
                 </div>
               )}
 
+              {/* AI Configuration Settings */}
+              {activeTab === 'ai' && (
+                <div className="p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-6">AI Provider Configuration</h3>
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <p className="text-blue-800 text-sm">
+                        <strong>AI Provider Setup:</strong> Configure your preferred AI provider for message generation.
+                        Each provider offers different models with varying capabilities and costs.
+                      </p>
+                    </div>
+
+                    {aiSettings.hasExistingKey && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <p className="text-green-800 text-sm">
+                          <CheckCircle className="h-4 w-4 inline mr-2" />
+                          AI provider is configured and ready for message generation.
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        AI Provider
+                      </label>
+                      <select
+                        value={aiSettings.provider}
+                        onChange={(e) => setAiSettings(prev => ({ 
+                          ...prev, 
+                          provider: e.target.value as 'openai' | 'perplexity' | 'claude',
+                          model: aiProviders[e.target.value]?.models?.[0]?.id || ''
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="openai">OpenAI</option>
+                        <option value="perplexity">Perplexity</option>
+                        <option value="claude">Anthropic Claude</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Model
+                      </label>
+                      <select
+                        value={aiSettings.model}
+                        onChange={(e) => setAiSettings(prev => ({ ...prev, model: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {aiProviders[aiSettings.provider]?.models?.map((model: any) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} - {model.description}
+                          </option>
+                        )) || <option value="">No models available</option>}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        API Key {aiSettings.hasExistingKey && '(Update)'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={aiSettings.showApiKey ? 'text' : 'password'}
+                          value={aiSettings.apiKey}
+                          onChange={(e) => setAiSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder={getApiKeyPlaceholder(aiSettings.provider)}
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                          onClick={() => setAiSettings(prev => ({ ...prev, showApiKey: !prev.showApiKey }))}
+                        >
+                          {aiSettings.showApiKey ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Your API key is encrypted and stored securely
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Temperature
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="2"
+                          step="0.1"
+                          value={aiSettings.temperature}
+                          onChange={(e) => setAiSettings(prev => ({ ...prev, temperature: parseFloat(e.target.value) || 0.7 }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Controls creativity (0-2)</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Max Tokens
+                        </label>
+                        <input
+                          type="number"
+                          min="100"
+                          max="4000"
+                          value={aiSettings.maxTokens}
+                          onChange={(e) => setAiSettings(prev => ({ ...prev, maxTokens: parseInt(e.target.value) || 1000 }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Maximum response length</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <button
+                        onClick={handleSaveAISettings}
+                        disabled={loading}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        {loading ? 'Saving...' : aiSettings.hasExistingKey ? 'Update AI Settings' : 'Save AI Settings'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Notifications Settings */}
               {activeTab === 'notifications' && (
                 <div className="p-6">

@@ -124,6 +124,7 @@ async function handleCreateUser(req: AuthenticatedRequest, res: NextApiResponse)
       email_verified: true,
       onboarding_complete: true,
       is_active: true,
+      email_accounts: [],
       subscription: { plan: 'free', status: 'inactive' },
       linkedin_accounts: [],
       api_keys: {},

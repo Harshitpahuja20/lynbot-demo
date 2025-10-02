@@ -97,6 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         email_verified: true,
         onboarding_complete: true,
         is_active: true,
+        email_accounts: [],
         linkedin_accounts: [],
         api_keys: {},
         settings: {
@@ -108,7 +109,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             connectionRequests: { enabled: false },
             welcomeMessages: { enabled: false },
             followUpMessages: { enabled: false },
-            profileViews: { enabled: false }
+            profileViews: { enabled: false },
+            emailSending: { enabled: false }
           },
           notifications: {
             email: true,

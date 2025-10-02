@@ -1147,13 +1147,6 @@ const ProspectsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Export Modal */}
-      <ExportModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        campaigns={campaigns}
-        selectedCampaignId={filterCampaign !== 'all' ? filterCampaign : undefined}
-      />
     </Layout>
   );
 };

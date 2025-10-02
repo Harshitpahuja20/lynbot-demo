@@ -48,6 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email_verified: true,
       onboarding_complete: false,
       is_active: true,
+      email_accounts: [],
       subscription: { plan: 'free', status: 'inactive' },
       linkedin_accounts: [],
       api_keys: {},

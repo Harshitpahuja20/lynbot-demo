@@ -152,7 +152,7 @@ class MessageGenerator {
         }
         
         messages.push({
-          prospectId: (prospect as any)._id,
+          prospectId: (prospect as any).id || (prospect as any)._id,
           message: message,
           messageType: messageType
         });
@@ -162,7 +162,7 @@ class MessageGenerator {
         
         // Add fallback template message
         messages.push({
-          prospectId: (prospect as any)._id,
+          prospectId: (prospect as any).id || (prospect as any)._id,
           message: this.generateTemplateMessage(messageType, campaignData.tone || 'professional', prospect),
           messageType: messageType
         });

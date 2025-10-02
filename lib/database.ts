@@ -81,6 +81,12 @@ export interface User {
     timezone: string
     workingHours: { start: number; end: number }
     workingDays: number[]
+    aiProvider?: {
+      provider: 'openai' | 'perplexity' | 'claude'
+      model: string
+      temperature: number
+      maxTokens: number
+    }
     aiProvider: {
       provider: 'openai' | 'perplexity' | 'claude'
       model: string
@@ -93,7 +99,6 @@ export interface User {
       welcomeMessages: { enabled: boolean }
       followUpMessages: { enabled: boolean }
       profileViews: { enabled: boolean }
-      emailSending: { enabled: boolean }
       emailSending: { enabled: boolean }
     }
     notifications: {
