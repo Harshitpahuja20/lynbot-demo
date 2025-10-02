@@ -8,7 +8,7 @@ const nextConfig = {
   // Handle trailing slashes
   trailingSlash: false,
   // Ensure proper build output for Netlify
-  output: 'standalone',
+  output: 'export',
   // External packages configuration
   webpack: (config, { isServer }) => {
     // Handle external packages that should not be bundled
@@ -34,13 +34,8 @@ const nextConfig = {
   ],
   // Disable SWC minification if causing issues
   swcMinify: false,
-  // Ensure proper API routes handling
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-    responseLimit: '8mb'
-  }
+  // Disable server-side features for static export
+  distDir: '.next'
 };
 
 module.exports = nextConfig;
