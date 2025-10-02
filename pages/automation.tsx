@@ -112,7 +112,7 @@ const AutomationPage: React.FC = () => {
     workingDays: [1, 2, 3, 4, 5],
     dailyLimits: {
       connections: 50,
-      messages: 80,
+      messages: 25,
       profileViews: 100,
       emails: 20
     }
@@ -733,7 +733,7 @@ const AutomationPage: React.FC = () => {
                       <input
                         type="number"
                         min="1"
-                        max="50"
+                        max="80"
                         value={formData.dailyLimits.messages}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
@@ -741,6 +741,9 @@ const AutomationPage: React.FC = () => {
                         }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        LinkedIn allows up to 80 messages per day
+                      </p>
                     </div>
                     
                     <div>

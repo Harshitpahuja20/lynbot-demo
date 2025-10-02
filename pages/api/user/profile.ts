@@ -102,7 +102,7 @@ async function handleUpdateProfile(req: AuthenticatedRequest, res: NextApiRespon
         subscription: user.subscription
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     console.log(`Profile updated for user: ${req.user.email}`);

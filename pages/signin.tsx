@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { setToken } from '../utils/auth';
 import { LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 const SignInPage: React.FC = () => {
@@ -42,7 +43,7 @@ const SignInPage: React.FC = () => {
       }
 
       // Store token and redirect
-      sessionStorage.setItem('token', data.token);
+      setToken(data.token);
       
       if (!data.user.onboardingComplete) {
         router.push('/onboarding');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getCurrentUser } from '../utils/auth';
+import { getCurrentUser, setToken } from '../utils/auth';
 import { 
   CheckCircle, 
   ArrowRight, 
@@ -193,7 +193,7 @@ const OnboardingPage: React.FC = () => {
         
         // Update the token in localStorage with the new one that includes onboardingComplete: true
         if (data.token) {
-          sessionStorage.setItem('token', data.token);
+          setToken(data.token);
         }
         
         // Redirect to dashboard
@@ -399,20 +399,20 @@ const OnboardingPage: React.FC = () => {
           )}
 
           {/* Analytics Preview */}
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="bg-gray-50 p-6 rounded-lg mb-6">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-blue-600">85%</div>
-                  <div className="text-sm text-gray-600">Acceptance Rate</div>
+                  <div className="text-2xl font-bold text-blue-600">1,247</div>
+                  <div className="text-sm text-gray-600">Profiles Scraped</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-600">42%</div>
-                  <div className="text-sm text-gray-600">Response Rate</div>
+                  <div className="text-2xl font-bold text-green-600">89%</div>
+                  <div className="text-sm text-gray-600">AI Message Success</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-purple-600">156</div>
-                  <div className="text-sm text-gray-600">New Connections</div>
+                  <div className="text-2xl font-bold text-purple-600">43</div>
+                  <div className="text-sm text-gray-600">Appointments Booked</div>
                 </div>
               </div>
             </div>

@@ -25,14 +25,49 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
   const router = useRouter();
-  const [user, setUser] = useState(getCurrentUser());
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/signin');
-      return;
+    // Check authentication on mount and route changes
+    const checkAuth = () => {
+      const currentUser = getCurrentUser();
+      setUser(currentUser);
+      setLoading(false);
+      
+      if (!currentUser) {
+        router.push('/signin');
+      }
+    };
+
+    checkAuth();
+
+    // Listen for storage changes (token updates from other tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token') {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [router]);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
     }
-  }, [user, router]);
 
   const handleLogout = () => {
     console.log('Logging out...');

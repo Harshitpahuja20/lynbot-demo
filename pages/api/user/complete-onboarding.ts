@@ -42,7 +42,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         subscription: user.subscription
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     console.log(`Onboarding completed for user: ${req.user.email}`);

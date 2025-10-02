@@ -587,6 +587,17 @@ const ProspectsPage: React.FC = () => {
               </div>
               
               <div className="space-y-6 max-h-96 overflow-y-auto">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">Profile Data Collection</span>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    Prospect profiles are enriched with scraped LinkedIn data including experience, education, 
+                    skills, and company information to enable AI-powered conversation starters and personalized outreach.
+                  </p>
+                </div>
+
                 {/* Campaign Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

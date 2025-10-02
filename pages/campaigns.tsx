@@ -667,7 +667,7 @@ export default function Campaigns() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-3">LinkedIn Search Criteria</h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Update your target prospect criteria for this campaign.
+                    Update your target prospect criteria for profile scraping and lead generation. These criteria work with LinkedIn Sales Navigator to find and analyze prospect profiles.
                   </p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

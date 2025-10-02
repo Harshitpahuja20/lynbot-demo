@@ -39,13 +39,17 @@ const Dashboard: React.FC = () => {
       router.push('/signin');
       return;
     }
-    fetchDashboardData();
+    
+    // Only fetch data if we have a valid user
+    if (user.id) {
+      fetchDashboardData();
+    }
   }, [user?.id, router]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       
       if (!token) {
         router.push('/signin');

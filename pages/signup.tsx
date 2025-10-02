@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { setToken } from '../utils/auth';
 import { UserPlus, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 
 const SignUpPage: React.FC = () => {
@@ -86,7 +87,7 @@ const SignUpPage: React.FC = () => {
       setSuccess(true);
       
       // Store token and redirect after a brief success message
-      sessionStorage.setItem('token', data.token);
+      setToken(data.token);
       
       setTimeout(() => {
         if (!data.user.onboardingComplete) {

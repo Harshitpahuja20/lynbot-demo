@@ -15,7 +15,7 @@ interface CampaignData {
 
 interface MessageGenerationOptions {
   prospectData: ProspectData;
-  messageType: 'connection' | 'welcome' | 'follow_up' | 'reply';
+  messageType: 'connection' | 'welcome' | 'follow_up' | 'reply' | 'conversation_starter';
   campaignData: CampaignData;
   followUpNumber?: number;
   context?: any;
@@ -24,9 +24,9 @@ interface MessageGenerationOptions {
 class MessageGenerator {
   private messageTemplates = {
     connection: {
-      professional: `Hi {name}, I noticed your experience in {industry} at {company}. I'd love to connect and potentially explore synergies between our work in {field}.`,
+      professional: `Hi {name}, I noticed your impressive experience in {industry} at {company}. Your background caught my attention and I'd love to connect to explore potential synergies in {field}.`,
       casual: `Hey {name}! Saw your profile and your work at {company} looks really interesting. Would love to connect!`,
-      friendly: `Hi {name}, I came across your profile and was impressed by your background in {industry}. I'd enjoy connecting with fellow professionals in this space.`,
+      friendly: `Hi {name}, I came across your profile and was impressed by your background in {industry}. I'd enjoy connecting with fellow professionals and sharing insights about {field}.`,
       direct: `Hi {name}, I'm reaching out to professionals in {industry} to expand my network. Your experience at {company} caught my attention.`
     },
     welcome: {
@@ -34,6 +34,12 @@ class MessageGenerator {
       casual: `Thanks for connecting, {name}! Looking forward to staying in touch and seeing what you're up to at {company}.`,
       friendly: `Hi {name}, thanks for accepting my connection request! I'm always interested in connecting with talented professionals like yourself.`,
       direct: `Thanks for connecting, {name}. I'd be interested in discussing potential collaboration opportunities in {industry}.`
+    },
+    conversation_starter: {
+      professional: `Hi {name}, I was reviewing profiles of {industry} professionals and your experience at {company} really stood out. I'd be interested in discussing {field} trends and potential collaboration opportunities.`,
+      casual: `Hey {name}! Your work at {company} caught my eye. Would love to chat about what you're working on in {industry}!`,
+      friendly: `Hi {name}, I've been connecting with talented {industry} professionals and your background at {company} is impressive. I'd enjoy exchanging insights about {field}.`,
+      direct: `Hi {name}, I'm reaching out to discuss potential business opportunities in {industry}. Your role at {company} suggests you might be interested in {field} solutions.`
     },
     follow_up: {
       professional: `Hi {name}, I hope you're doing well! I wanted to follow up on our connection and see if there might be opportunities for us to collaborate or share insights about {industry}.`,
@@ -73,6 +79,10 @@ class MessageGenerator {
     return this.generateTemplateMessage('follow_up', tone, prospectData);
   }
 
+  async generateConversationStarter(prospectData: ProspectData, campaignData: CampaignData): Promise<string> {
+    const tone = campaignData.tone || 'professional';
+    return this.generateTemplateMessage('conversation_starter', tone, prospectData);
+  }
   async generateBulkMessages(prospects: ProspectData[], campaignData: CampaignData, messageType: 'connection' | 'welcome' | 'follow_up' = 'connection') {
     const messages = [];
     
@@ -129,6 +139,8 @@ export async function generateAIMessage(options: MessageGenerationOptions): Prom
       return await messageGenerator.generateWelcomeMessage(prospectData, campaignData);
     case 'follow_up':
       return await messageGenerator.generateFollowUpMessage(prospectData, campaignData, followUpNumber);
+    case 'conversation_starter':
+      return await messageGenerator.generateConversationStarter(prospectData, campaignData);
     case 'reply':
       // For replies, use welcome message logic for now
       return await messageGenerator.generateWelcomeMessage(prospectData, campaignData);

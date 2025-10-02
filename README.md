@@ -65,16 +65,27 @@ Full-Stack Next.js LinkedIn Automation Platform for lead generation and outreach
 
 ## API Routes
 
-- `/api/auth/login` - User authentication
-- `/api/auth/register` - User registration
-- `/api/user/profile` - User profile management
-- `/api/user/dashboard-stats` - Dashboard statistics
-- `/api/campaigns` - Campaign management
-- `/api/prospects` - Prospect management and lead scoring
+### Authentication & User Management
+- `/api/auth/login` - User authentication and session management
+- `/api/auth/register` - New user registration
+- `/api/user/profile` - User profile and account settings
+- `/api/user/linkedin-account` - LinkedIn account integration
+- `/api/user/email-account` - Email account integration
+- `/api/user/openai-key` - OpenAI API key management
+- `/api/admin/users` - Admin user management and permissions
+
+### Campaign & Lead Management
+- `/api/campaigns` - Campaign creation and management
+- `/api/campaigns/[id]/search-prospects` - LinkedIn profile scraping and lead generation
+- `/api/prospects` - Prospect management and profile data
 - `/api/messages` - Multi-channel messaging (LinkedIn + Email)
-- `/api/automation` - Automation settings and status
-- `/api/analytics` - Performance analytics and reporting
-- `/api/admin/users` - Admin user management
+
+### Automation & Analytics
+- `/api/automation/settings` - Automation configuration and limits
+- `/api/automation/status` - Real-time automation status and usage
+- `/api/analytics/summary` - Campaign performance and ROI metrics
+- `/api/analytics/trends` - Lead generation and engagement trends
+- `/api/analytics/campaigns` - Campaign-specific analytics
 
 ## Development
 

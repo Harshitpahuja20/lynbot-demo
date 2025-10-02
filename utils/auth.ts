@@ -14,16 +14,18 @@ export interface User {
 
 export const getToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem('token');
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
 
 export const setToken = (token: string): void => {
   if (typeof window === 'undefined') return;
+  localStorage.setItem('token', token);
   sessionStorage.setItem('token', token);
 };
 
 export const removeToken = (): void => {
   if (typeof window === 'undefined') return;
+  localStorage.removeItem('token');
   sessionStorage.removeItem('token');
 };
 
@@ -77,9 +79,9 @@ export const isAdmin = (): boolean => {
 export const logout = (): void => {
   removeToken();
   if (typeof window !== 'undefined') {
-    // Clear any cached user data
-    sessionStorage.clear();
-    localStorage.clear();
+    // Clear only auth-related data, preserve other app data
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     
     // Force a hard reload to clear any cached state
     window.location.replace('/signin');
