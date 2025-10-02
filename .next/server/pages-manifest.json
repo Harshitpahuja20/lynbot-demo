@@ -1,8 +1,1 @@
-{
-  "/_app": "pages/_app.js",
-  "/_error": "pages/_error.js",
-  "/_document": "pages/_document.js",
-  "/signin": "pages/signin.js",
-  "/seed-test-users": "pages/seed-test-users.js",
-  "/": "pages/index.js"
-}
+{}
