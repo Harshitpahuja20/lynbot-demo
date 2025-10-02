@@ -120,6 +120,7 @@ async function handleCreateUser(req: AuthenticatedRequest, res: NextApiResponse)
       last_name,
       company,
       role,
+      email_accounts: [],
       email_verified: true,
       onboarding_complete: true,
       is_active: true,
