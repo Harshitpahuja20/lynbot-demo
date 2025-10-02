@@ -1,7 +1,6 @@
 import { NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
 import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
-import { userOperations } from '../../../lib/database';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

@@ -1,7 +1,7 @@
 import { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
 import { messageOperations, prospectOperations, userOperations } from '../../../lib/database';
-import EmailService from '../../../lib/services/emailService';
+import EmailService, { type EmailAccount } from '../../../lib/services/emailService';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 

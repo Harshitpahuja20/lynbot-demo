@@ -1,4 +1,4 @@
-interface EmailAccount {
+export interface EmailAccount {
   email: string;
   encryptedPassword?: string;
   provider: 'gmail' | 'outlook' | 'smtp';
@@ -16,7 +16,7 @@ interface EmailAccount {
   lastSyncAt?: string;
 }
 
-interface EmailMessage {
+export interface EmailMessage {
   messageId: string;
   threadId?: string;
   from: string;
@@ -37,7 +37,7 @@ interface EmailMessage {
   }>;
 }
 
-interface SendEmailOptions {
+export interface SendEmailOptions {
   to: string | string[];
   from: string;
   subject: string;
