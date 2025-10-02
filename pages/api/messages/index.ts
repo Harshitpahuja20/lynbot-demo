@@ -133,10 +133,10 @@ async function handleSendMessage(req: AuthenticatedRequest, res: NextApiResponse
       attachments: [],
       analytics: {
         opened: false,
-        openedAt: null,
+        openedAt: undefined,
         clickedLinks: [],
         responseReceived: false,
-        responseTime: null,
+        responseTime: undefined,
         sentiment: 'neutral',
         leadQuality: 'cold'
       },
