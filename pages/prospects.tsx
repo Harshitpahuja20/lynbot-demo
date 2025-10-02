@@ -574,6 +574,9 @@ const ProspectsPage: React.FC = () => {
             <div className="mt-3">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Add New Prospect</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Add prospects manually by entering their LinkedIn profile information, or import them from LinkedIn searches and profile scraping campaigns. Each prospect will be enriched with comprehensive profile data for personalized outreach.
+                </p>
                 <button
                   onClick={() => {
                     setShowCreateModal(false);

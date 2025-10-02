@@ -135,7 +135,8 @@ async function handleCreateUser(req: AuthenticatedRequest, res: NextApiResponse)
           connectionRequests: { enabled: false },
           welcomeMessages: { enabled: false },
           followUpMessages: { enabled: false },
-          profileViews: { enabled: false }
+          profileViews: { enabled: false },
+          emailSending: { enabled: false }
         },
         notifications: {
           email: true,

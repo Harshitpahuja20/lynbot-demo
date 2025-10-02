@@ -125,6 +125,7 @@ export interface Campaign {
     customFilters?: any
   }
   message_templates: {
+    // AI-generated conversation starters are configured here
     connectionRequest: {
       enabled: boolean
       template?: string
