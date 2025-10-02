@@ -39,6 +39,30 @@ export interface User {
       lastReset: string
     }
   }>
+  email_accounts: Array<{
+    email: string
+    encryptedPassword?: string
+    provider: 'gmail' | 'outlook' | 'smtp'
+    smtpSettings?: {
+      host: string
+      port: number
+      secure: boolean
+    }
+    isActive: boolean
+    lastUsed?: string
+    dailyLimits: {
+      emails: number
+    }
+    dailyUsage: {
+      emails: number
+      lastReset: string
+    }
+    accountHealth: {
+      status: 'healthy' | 'warning' | 'restricted' | 'banned'
+      lastCheck?: string
+      restrictions: string[]
+    }
+  }>
   api_keys: {
     openai?: string
     encryptedOpenAI?: string
@@ -53,6 +77,7 @@ export interface User {
       welcomeMessages: { enabled: boolean }
       followUpMessages: { enabled: boolean }
       profileViews: { enabled: boolean }
+      emailSending: { enabled: boolean }
     }
     notifications: {
       email: boolean
@@ -124,12 +149,31 @@ export interface Campaign {
       delay: number
       enabled: boolean
     }>
+    emailTemplates: {
+      coldEmail: {
+        enabled: boolean
+        template?: string
+        tone: 'professional' | 'casual' | 'friendly' | 'direct'
+        useAI: boolean
+        customPrompt?: string
+        delay: number
+      }
+      followUpEmail: {
+        enabled: boolean
+        template?: string
+        tone: 'professional' | 'casual' | 'friendly' | 'direct'
+        useAI: boolean
+        customPrompt?: string
+        delay: number
+      }
+    }
   }
   automation: {
     enabled: boolean
     dailyLimits: {
       connections: number
       messages: number
+      emails: number
     }
     timing: {
       workingHours: { start: number; end: number }
@@ -139,6 +183,10 @@ export interface Campaign {
     withdrawInvitations: {
       enabled: boolean
       afterDays: number
+    }
+    emailSending: {
+      enabled: boolean
+      dailyLimit: number
     }
   }
   statistics: {
@@ -237,6 +285,10 @@ export interface Prospect {
     nextScheduledDate?: string | null
     automationPaused: boolean
     pauseReason?: string | null
+    coldEmailSent: boolean
+    coldEmailDate?: string | null
+    emailFollowUpsSent: number
+    lastEmailFollowUpDate?: string | null
   }
   scoring: {
     leadScore: number
@@ -274,7 +326,7 @@ export interface Message {
   campaign_id?: string
   conversation_id: string
   type: 'sent' | 'received'
-  message_type: 'connection_request' | 'welcome' | 'follow_up' | 'manual' | 'auto_reply'
+  message_type: 'connection_request' | 'welcome' | 'follow_up' | 'manual' | 'auto_reply' | 'cold_email' | 'email_follow_up'
   content: string
   subject?: string
   platform: 'linkedin' | 'email' | 'other'

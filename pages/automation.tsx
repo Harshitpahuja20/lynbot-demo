@@ -107,12 +107,14 @@ const AutomationPage: React.FC = () => {
     welcomeMessages: false,
     followUpMessages: false,
     profileViews: false,
+    emailSending: false,
     workingHours: { start: 9, end: 18 },
     workingDays: [1, 2, 3, 4, 5],
     dailyLimits: {
       connections: 50,
       messages: 25,
-      profileViews: 100
+      profileViews: 100,
+      emails: 20
     }
   });
 
@@ -163,6 +165,7 @@ const AutomationPage: React.FC = () => {
           welcomeMessages: settingsData.settings.automationTypes.welcomeMessages.enabled,
           followUpMessages: settingsData.settings.automationTypes.followUpMessages.enabled,
           profileViews: settingsData.settings.automationTypes.profileViews.enabled,
+          emailSending: settingsData.settings.automationTypes.emailSending?.enabled || false,
           workingHours: settingsData.settings.globalSettings.workingHours,
           workingDays: settingsData.settings.globalSettings.workingDays,
           dailyLimits: settingsData.settings.dailyLimits
@@ -201,7 +204,8 @@ const AutomationPage: React.FC = () => {
             connectionRequests: { enabled: formData.connectionRequests },
             welcomeMessages: { enabled: formData.welcomeMessages },
             followUpMessages: { enabled: formData.followUpMessages },
-            profileViews: { enabled: formData.profileViews }
+            profileViews: { enabled: formData.profileViews },
+            emailSending: { enabled: formData.emailSending }
           }
         })
       });

@@ -5,6 +5,7 @@ import {
   Settings as SettingsIcon, 
   User, 
   Key, 
+  Mail,
   Bell, 
   Shield, 
   Save,
@@ -45,6 +46,20 @@ const SettingsPage: React.FC = () => {
     hasExistingKey: false
   });
 
+  // Email account settings
+  const [emailData, setEmailData] = useState({
+    email: '',
+    password: '',
+    provider: 'gmail' as 'gmail' | 'outlook' | 'smtp',
+    showPassword: false,
+    hasExistingAccount: false,
+    smtpSettings: {
+      host: '',
+      port: 587,
+      secure: true
+    }
+  });
+
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -56,6 +71,7 @@ const SettingsPage: React.FC = () => {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'linkedin', label: 'LinkedIn Account', icon: Key },
+    { id: 'email', label: 'Email Accounts', icon: Mail },
     { id: 'openai', label: 'OpenAI API', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
@@ -102,6 +118,17 @@ const SettingsPage: React.FC = () => {
             setOpenaiData(prev => ({
               ...prev,
               hasExistingKey: true
+            }));
+          }
+
+          // Set Email account data
+          if (data.user.emailAccounts && data.user.emailAccounts.length > 0) {
+            const emailAccount = data.user.emailAccounts[0];
+            setEmailData(prev => ({
+              ...prev,
+              email: emailAccount.email || '',
+              provider: emailAccount.provider || 'gmail',
+              hasExistingAccount: true
             }));
           }
 
@@ -224,6 +251,50 @@ const SettingsPage: React.FC = () => {
       }
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save OpenAI API key. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    if (!emailData.email) {
+      setMessage({ type: 'error', text: 'Please provide an email address' });
+      return;
+    }
+
+    if (emailData.provider === 'smtp' && (!emailData.smtpSettings.host || !emailData.smtpSettings.port)) {
+      setMessage({ type: 'error', text: 'Please provide SMTP host and port for custom SMTP configuration' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    
+    try {
+      const response = await fetch('/api/user/email-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: emailData.email,
+          password: emailData.password,
+          provider: emailData.provider,
+          smtpSettings: emailData.provider === 'smtp' ? emailData.smtpSettings : undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setMessage({ type: 'success', text: 'Email account saved successfully!' });
+        setEmailData(prev => ({ ...prev, hasExistingAccount: true, password: '' }));
+      } else {
+        throw new Error(data.error || 'Failed to save email account');
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save email account. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -483,6 +554,166 @@ const SettingsPage: React.FC = () => {
                           <Save className="h-4 w-4 mr-2" />
                         )}
                         {loading ? 'Saving...' : linkedinData.hasExistingAccount ? 'Update LinkedIn Account' : 'Save LinkedIn Account'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Email Account Settings */}
+              {activeTab === 'email' && (
+                <div className="p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-6">Email Account Integration</h3>
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <p className="text-blue-800 text-sm">
+                        <strong>Email Integration:</strong> Connect your email accounts to enable automated cold email campaigns 
+                        and follow-up sequences. This works alongside your LinkedIn automation for comprehensive outreach.
+                      </p>
+                    </div>
+
+                    {emailData.hasExistingAccount && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <p className="text-green-800 text-sm">
+                          <CheckCircle className="h-4 w-4 inline mr-2" />
+                          Email account is configured and ready for automated campaigns.
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email Provider
+                      </label>
+                      <select
+                        value={emailData.provider}
+                        onChange={(e) => setEmailData(prev => ({ ...prev, provider: e.target.value as any }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="gmail">Gmail</option>
+                        <option value="outlook">Outlook</option>
+                        <option value="smtp">Custom SMTP</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={emailData.email}
+                        onChange={(e) => setEmailData(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="your-email@example.com"
+                      />
+                    </div>
+
+                    {emailData.provider !== 'smtp' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          App Password {emailData.hasExistingAccount && '(Update)'}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={emailData.showPassword ? 'text' : 'password'}
+                            value={emailData.password}
+                            onChange={(e) => setEmailData(prev => ({ ...prev, password: e.target.value }))}
+                            className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder={emailData.hasExistingAccount ? "Enter new password to update" : "App-specific password"}
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            onClick={() => setEmailData(prev => ({ ...prev, showPassword: !prev.showPassword }))}
+                          >
+                            {emailData.showPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Use an app-specific password for {emailData.provider === 'gmail' ? 'Gmail' : 'Outlook'}
+                        </p>
+                      </div>
+                    )}
+
+                    {emailData.provider === 'smtp' && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              SMTP Host
+                            </label>
+                            <input
+                              type="text"
+                              value={emailData.smtpSettings.host}
+                              onChange={(e) => setEmailData(prev => ({ 
+                                ...prev, 
+                                smtpSettings: { ...prev.smtpSettings, host: e.target.value }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="smtp.example.com"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              SMTP Port
+                            </label>
+                            <input
+                              type="number"
+                              value={emailData.smtpSettings.port}
+                              onChange={(e) => setEmailData(prev => ({ 
+                                ...prev, 
+                                smtpSettings: { ...prev.smtpSettings, port: parseInt(e.target.value) || 587 }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="587"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Password
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={emailData.showPassword ? 'text' : 'password'}
+                              value={emailData.password}
+                              onChange={(e) => setEmailData(prev => ({ ...prev, password: e.target.value }))}
+                              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Your email password"
+                            />
+                            <button
+                              type="button"
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                              onClick={() => setEmailData(prev => ({ ...prev, showPassword: !prev.showPassword }))}
+                            >
+                              {emailData.showPassword ? (
+                                <EyeOff className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-gray-400" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4">
+                      <button
+                        onClick={handleSaveEmail}
+                        disabled={loading}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        {loading ? 'Saving...' : emailData.hasExistingAccount ? 'Update Email Account' : 'Save Email Account'}
                       </button>
                     </div>
                   </div>
