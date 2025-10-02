@@ -22,6 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const testUsers: TestUserData[] = [
       {
+        email: 'admin@lyncbot.com',
+        password: 'LyncBot123!',
+        first_name: 'Admin',
+        last_name: 'User',
+        company: 'Lync Bot',
+        role: 'admin' as const
+      },
+      {
         email: 'sean@sitehues.com',
         password: 'password123',
         first_name: 'Sean',
@@ -35,6 +43,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         first_name: 'Test',
         last_name: 'User',
         company: 'Test Company',
+        role: 'user' as const
+      },
+      {
+        email: 'demo@example.com',
+        password: 'demo123456',
+        first_name: 'Demo',
+        last_name: 'User',
+        company: 'Demo Company',
         role: 'user' as const
       }
     ];
@@ -75,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         company: userData.company,
         role: userData.role,
         subscription: {
-          plan: 'free' as const,
+          plan: userData.role === 'admin' ? 'full_access' as const : 'free' as const,
           status: 'active'
         },
         email_verified: true,
