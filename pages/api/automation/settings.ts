@@ -110,9 +110,9 @@ async function handleUpdateSettings(req: AuthenticatedRequest, res: NextApiRespo
         ...updatedSettings.automation,
         enabled: globalSettings.enabled
       };
+     updatedSettings.timezone = globalSettings.timezone;
       updatedSettings.workingHours = globalSettings.workingHours;
       updatedSettings.workingDays = globalSettings.workingDays;
-      updatedSettings.timezone = globalSettings.timezone;
     }
 
     if (automationTypes) {

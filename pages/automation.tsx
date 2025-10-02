@@ -108,6 +108,7 @@ const AutomationPage: React.FC = () => {
     followUpMessages: false,
     profileViews: false,
     emailSending: false,
+   timezone: 'UTC',
     workingHours: { start: 9, end: 18 },
     workingDays: [1, 2, 3, 4, 5],
     dailyLimits: {
@@ -166,6 +167,7 @@ const AutomationPage: React.FC = () => {
           followUpMessages: settingsData.settings.automationTypes.followUpMessages.enabled,
           profileViews: settingsData.settings.automationTypes.profileViews.enabled,
           emailSending: settingsData.settings.automationTypes.emailSending?.enabled || false,
+         timezone: settingsData.settings.globalSettings.timezone || 'UTC',
           workingHours: settingsData.settings.globalSettings.workingHours,
           workingDays: settingsData.settings.globalSettings.workingDays,
           dailyLimits: settingsData.settings.dailyLimits
@@ -196,6 +198,7 @@ const AutomationPage: React.FC = () => {
         body: JSON.stringify({
           globalSettings: {
             enabled: formData.globalEnabled,
+           timezone: formData.timezone,
             workingHours: formData.workingHours,
             workingDays: formData.workingDays
           },
@@ -589,6 +592,55 @@ const AutomationPage: React.FC = () => {
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                         Timezone
+                       </label>
+                       <select
+                         value={formData.timezone || 'UTC'}
+                         onChange={(e) => setFormData(prev => ({ 
+                           ...prev, 
+                           timezone: e.target.value
+                         }))}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                       >
+                         <option value="UTC">UTC (Coordinated Universal Time)</option>
+                         <option value="America/New_York">Eastern Time (ET)</option>
+                         <option value="America/Chicago">Central Time (CT)</option>
+                         <option value="America/Denver">Mountain Time (MT)</option>
+                         <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                         <option value="America/Phoenix">Arizona Time (MST)</option>
+                         <option value="America/Anchorage">Alaska Time (AKST)</option>
+                         <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
+                         <option value="Europe/London">London (GMT/BST)</option>
+                         <option value="Europe/Paris">Paris (CET/CEST)</option>
+                         <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                         <option value="Europe/Rome">Rome (CET/CEST)</option>
+                         <option value="Europe/Madrid">Madrid (CET/CEST)</option>
+                         <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
+                         <option value="Europe/Zurich">Zurich (CET/CEST)</option>
+                         <option value="Asia/Tokyo">Tokyo (JST)</option>
+                         <option value="Asia/Shanghai">Shanghai (CST)</option>
+                         <option value="Asia/Hong_Kong">Hong Kong (HKT)</option>
+                         <option value="Asia/Singapore">Singapore (SGT)</option>
+                         <option value="Asia/Seoul">Seoul (KST)</option>
+                         <option value="Asia/Mumbai">Mumbai (IST)</option>
+                         <option value="Asia/Dubai">Dubai (GST)</option>
+                         <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
+                         <option value="Australia/Melbourne">Melbourne (AEDT/AEST)</option>
+                         <option value="Australia/Perth">Perth (AWST)</option>
+                         <option value="Pacific/Auckland">Auckland (NZDT/NZST)</option>
+                         <option value="America/Toronto">Toronto (ET)</option>
+                         <option value="America/Vancouver">Vancouver (PT)</option>
+                         <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                         <option value="America/Mexico_City">Mexico City (CST)</option>
+                         <option value="Africa/Cairo">Cairo (EET)</option>
+                         <option value="Africa/Johannesburg">Johannesburg (SAST)</option>
+                       </select>
+                       <p className="text-xs text-gray-500 mt-1">
+                         Automation will run according to this timezone's working hours
+                       </p>
+                     </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
