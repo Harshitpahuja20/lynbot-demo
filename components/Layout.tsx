@@ -80,7 +80,7 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
     logout();
   };
 
-  // Define navigation items based on user role
+  // Define navigation items for regular users
   const userNavigationItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/campaigns', label: 'Campaigns', icon: Target },
@@ -91,6 +91,7 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
+  // Define navigation items for admin users
   const adminNavigationItems = [
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/admin/users', label: 'User Management', icon: Users },
