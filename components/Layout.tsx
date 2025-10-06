@@ -86,6 +86,7 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
     { href: '/campaigns', label: 'Campaigns', icon: Target },
     { href: '/prospects', label: 'Prospects', icon: Users },
     { href: '/messages', label: 'Messages', icon: MessageSquare },
+    { href: '/knowledge', label: 'Knowledge Base', icon: Shield },
     { href: '/automation', label: 'Automation', icon: Zap },
     { href: '/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/settings', label: 'Settings', icon: Settings },
@@ -95,7 +96,7 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
   const adminNavigationItems = [
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/admin/users', label: 'User Management', icon: Users },
-    { href: '/admin/ai-knowledge', label: 'AI Knowledge', icon: Settings },
+    { href: '/admin/ai-knowledge', label: 'Global AI Knowledge', icon: Shield },
     { href: '/admin/user-knowledge', label: 'User Knowledge', icon: MessageSquare },
     { href: '/admin/onboarding', label: 'Onboarding', icon: Target },
   ];

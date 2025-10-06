@@ -382,8 +382,8 @@ const AdminAIKnowledgePage: React.FC = () => {
         {/* Page Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">AI Knowledge Base</h1>
-            <p className="text-gray-600">Manage global AI prompts, templates, and knowledge for all users</p>
+            <h1 className="text-2xl font-bold text-gray-900">Global AI Knowledge Base</h1>
+            <p className="text-gray-600">Manage global AI prompts, templates, and base knowledge that applies to all user accounts</p>
           </div>
           <div className="flex gap-3">
             <button 
@@ -391,14 +391,14 @@ const AdminAIKnowledgePage: React.FC = () => {
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
             >
               <Upload className="h-4 w-4 mr-2" />
-              Upload PDF
+              Upload Global PDF
             </button>
             <button 
               onClick={() => setShowCreateModal(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Knowledge
+              Add Global Knowledge
             </button>
           </div>
         </div>
