@@ -99,7 +99,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       message: 'User registered successfully',
       token,
-      user: userResponse
+      user: userResponse,
+      redirectTo: user.role === 'admin' ? '/admin/users' : '/dashboard'
     });
 
   } catch (error) {

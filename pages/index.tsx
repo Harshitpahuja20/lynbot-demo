@@ -1,16 +1,23 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { getCurrentUser } from '../utils/auth';
 
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is authenticated
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+    // Check if user is authenticated and get user info
+    const user = getCurrentUser();
     
-    if (token) {
-      // Redirect to dashboard if authenticated
-      router.replace('/dashboard');
+    if (user) {
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        router.replace('/admin/users');
+      } else if (!user.onboardingComplete) {
+        router.replace('/onboarding');
+      } else {
+        router.replace('/dashboard');
+      }
     } else {
       // Redirect to signin if not authenticated
       router.replace('/signin');

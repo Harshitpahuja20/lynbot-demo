@@ -90,7 +90,9 @@ const SignUpPage: React.FC = () => {
       setToken(data.token);
       
       setTimeout(() => {
-        if (!data.user.onboardingComplete) {
+        if (data.redirectTo) {
+          router.push(data.redirectTo);
+        } else if (!data.user.onboardingComplete) {
           router.push('/onboarding');
         } else {
           router.push('/dashboard');

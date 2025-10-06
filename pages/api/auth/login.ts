@@ -80,7 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       message: 'Login successful',
       token,
-      user: userResponse
+      user: userResponse,
+      redirectTo: user.role === 'admin' ? '/admin/users' : '/dashboard'
     });
 
   } catch (error) {

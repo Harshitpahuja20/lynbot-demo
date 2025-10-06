@@ -45,7 +45,9 @@ const SignInPage: React.FC = () => {
       // Store token and redirect
       setToken(data.token);
       
-      if (!data.user.onboardingComplete) {
+      if (data.redirectTo) {
+        router.push(data.redirectTo);
+      } else if (!data.user.onboardingComplete) {
         router.push('/onboarding');
       } else {
         router.push('/dashboard');

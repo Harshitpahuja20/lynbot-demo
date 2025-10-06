@@ -197,11 +197,19 @@ const OnboardingPage: React.FC = () => {
         }
         
         // Redirect to dashboard
-        router.push('/dashboard');
+        if (user?.role === 'admin') {
+          router.push('/admin/users');
+        } else {
+          router.push('/dashboard');
+        }
       } else if (response.status === 304) {
         // Already completed, redirect anyway
         console.log('Onboarding already completed');
-        router.push('/dashboard');
+        if (user?.role === 'admin') {
+          router.push('/admin/users');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         let errorMessage = 'Failed to complete onboarding';
         try {
