@@ -168,17 +168,17 @@ const AdminAIKnowledgePage: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <Layout>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <span className="ml-2 text-gray-600">Loading AI knowledge...</span>
         </div>
-      </AdminLayout>
+      </Layout>
     );
   }
 
   return (
-    <AdminLayout error={error} onClearError={() => setError('')}>
+    <Layout error={error} onClearError={() => setError('')}>
       <div className="space-y-6">
         {/* Success Message */}
         {success && (
@@ -465,7 +465,7 @@ const AdminAIKnowledgePage: React.FC = () => {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </Layout>
   );
 };
 

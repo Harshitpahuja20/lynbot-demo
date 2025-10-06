@@ -112,7 +112,7 @@ const AdminAnalyticsPage: React.FC = () => {
   }
 
   return (
-    <AdminLayout error={error} onClearError={() => setError('')}>
+    <Layout>
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex justify-between items-center">
@@ -361,7 +361,7 @@ const AdminAnalyticsPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </Layout>
   );
 };
 

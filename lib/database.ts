@@ -484,18 +484,7 @@ export const userOperations = {
     const supabase = getSupabaseAdminClient()
     let query = supabase
       .from('users')
-      .select(`
-        id,
-        email,
-        first_name,
-        last_name,
-        company,
-        role,
-        subscription,
-        is_active,
-        last_login,
-        created_at
-      `, { count: 'exact' })
+      .select('id, email, first_name, last_name, company, role, subscription, is_active, last_login, created_at', { count: 'exact' })
 
     if (options.search) {
       query = query.or(`email.ilike.%${options.search}%,first_name.ilike.%${options.search}%,last_name.ilike.%${options.search}%,company.ilike.%${options.search}%`)
