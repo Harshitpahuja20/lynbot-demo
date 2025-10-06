@@ -37,6 +37,12 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
       
       if (!currentUser) {
         router.push('/signin');
+      } else if (currentUser.role === 'admin' && router.pathname.startsWith('/admin')) {
+        // Admin users accessing admin routes should stay on admin routes
+        return;
+      } else if (currentUser.role === 'admin' && !router.pathname.startsWith('/admin')) {
+        // Admin users accessing non-admin routes should be redirected to admin
+        router.push('/admin/users');
       }
     };
 

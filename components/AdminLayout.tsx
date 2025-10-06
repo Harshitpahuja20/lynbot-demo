@@ -74,7 +74,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, error, onClearError
   };
 
   const adminNavigationItems = [
-    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, description: 'User stats, payments, and platform metrics' },
+    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, description: 'User stats, active users, payments, refunds, etc.' },
     { href: '/admin/users', label: 'User Management', icon: Users, description: 'Manage user accounts and subscriptions' },
     { href: '/admin/ai-knowledge', label: 'AI Knowledge', icon: Brain, description: 'Global AI prompts and knowledge base' },
     { href: '/admin/user-knowledge', label: 'User Knowledge', icon: BookOpen, description: 'Support docs and tutorials' },

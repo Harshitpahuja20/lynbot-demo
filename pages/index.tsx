@@ -6,13 +6,13 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is authenticated and get user info
+    // Check if user is authenticated and redirect appropriately
     const user = getCurrentUser();
     
     if (user) {
       // Redirect based on user role
       if (user.role === 'admin') {
-        router.replace('/admin/users');
+        router.replace('/admin/analytics');
       } else if (!user.onboardingComplete) {
         router.replace('/onboarding');
       } else {
