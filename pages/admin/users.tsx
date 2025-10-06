@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getCurrentUser } from '../../utils/auth';
+import { getCurrentUser, getToken } from '../../utils/auth';
 import Layout from '../../components/Layout';
 import { 
   Users, 
@@ -67,9 +67,16 @@ const AdminUsersPage: React.FC = () => {
     try {
       setLoading(true);
       setError(''); // Clear any previous errors
+      
+      const token = getToken();
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+      
       const response = await fetch('/api/admin/users', {
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -77,7 +84,6 @@ const AdminUsersPage: React.FC = () => {
       if (!response.ok) {
         if (response.status === 401) {
           // Token is invalid or expired, redirect to login
-          sessionStorage.removeItem('token');
           router.push('/signin');
           return;
         }
@@ -105,10 +111,16 @@ const AdminUsersPage: React.FC = () => {
   const handleDeleteUser = async (userId: string) => {
     setActionLoading(true);
     try {
+      const token = getToken();
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+      
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -147,10 +159,16 @@ const AdminUsersPage: React.FC = () => {
     
     setActionLoading(true);
     try {
+      const token = getToken();
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+      
       const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(editFormData)
@@ -175,10 +193,16 @@ const AdminUsersPage: React.FC = () => {
   const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
     setActionLoading(true);
     try {
+      const token = getToken();
+      if (!token) {
+        router.push('/signin');
+        return;
+      }
+      
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ isActive: !currentStatus })
