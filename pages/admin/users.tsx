@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getCurrentUser, getToken, removeToken, logout } from '../../utils/auth';
-import Layout from '../../components/Layout';
+import AdminLayout from '../../components/AdminLayout';
 import { 
   Users, 
   Search, 
@@ -255,7 +255,7 @@ const AdminUsersPage: React.FC = () => {
   }
 
   return (
-    <Layout error={error} onClearError={() => setError('')}>
+    <AdminLayout error={error} onClearError={() => setError('')}>
       <div className="space-y-6">
         {/* Page Header */}
         <div>
@@ -645,7 +645,7 @@ const AdminUsersPage: React.FC = () => {
           </div>
         </div>
       )}
-    </Layout>
+    </AdminLayout>
   );
 };
 
