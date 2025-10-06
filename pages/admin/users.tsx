@@ -66,11 +66,11 @@ const AdminUsersPage: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      setError(''); // Clear any previous errors
+      setError('');
       
       const token = getToken();
       if (!token) {
-        logout(); // Use logout function for proper cleanup
+        logout();
         return;
       }
       
@@ -83,26 +83,23 @@ const AdminUsersPage: React.FC = () => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          // Token is invalid or expired, clear it and redirect to login
-          logout(); // Use logout function for proper cleanup
-          return;
-        }
-        if (response.status === 304) {
-          // Not modified, no need to update state
+          logout();
           return;
         }
         throw new Error('Failed to fetch users');
       }
 
       const data = await response.json();
-      if (data.success && data.users) {
+      if (data.success && Array.isArray(data.users)) {
         setUsers(data.users);
       } else {
-        throw new Error(data.error || 'Invalid response format');
+        console.error('Invalid users data received:', data);
+        setUsers([]);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
+      setUsers([]);
     } finally {
       setLoading(false);
     }

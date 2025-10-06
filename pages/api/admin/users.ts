@@ -61,15 +61,9 @@ async function handleGetUsers(req: AuthenticatedRequest, res: NextApiResponse) {
       });
     } catch (dbError) {
       console.error('Database error:', dbError);
-      res.json({
-        success: true,
-        users: [],
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total: 0,
-          pages: 0
-        }
+      res.status(500).json({
+        success: false,
+        error: 'Database error occurred'
       });
     }
 

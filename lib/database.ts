@@ -510,7 +510,12 @@ export const userOperations = {
     const { data, error, count } = await query
     
     if (error) throw error
-    return { users: data || [], total: count || 0 }
+    
+    // Ensure we return valid data structure
+    const users = Array.isArray(data) ? data : [];
+    const total = typeof count === 'number' ? count : 0;
+    
+    return { users, total }
   },
 
   async comparePassword(plainPassword: string, hashedPassword: string) {
