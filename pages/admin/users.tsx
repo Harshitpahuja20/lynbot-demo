@@ -822,7 +822,7 @@ const AdminUsersPage: React.FC = () => {
                     <>
                       <Save className="w-4 h-4 mr-2 inline" />
                       Update User
-                    </button>
+                    </>
                   )}
                 </button>
               </div>
