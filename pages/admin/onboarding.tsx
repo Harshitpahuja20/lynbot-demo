@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import Layout from '../../components/Layout';
 import { 
   UserCheck, 
   Plus, 

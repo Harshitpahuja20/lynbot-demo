@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import AdminLayout from '../../components/AdminLayout';
+import Layout from '../../components/Layout';
 import { getToken, logout } from '../../utils/auth';
 import { 
   Users, 

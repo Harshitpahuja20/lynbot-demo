@@ -40,6 +40,12 @@ const Dashboard: React.FC = () => {
       return;
     }
     
+    // Redirect admin users to admin panel
+    if (user.role === 'admin') {
+      router.push('/admin/analytics');
+      return;
+    }
+    
     // Only fetch data if we have a valid user
     if (user.id) {
       fetchDashboardData();

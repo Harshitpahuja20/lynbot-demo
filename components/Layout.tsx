@@ -80,7 +80,8 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
     logout();
   };
 
-  const navigationItems = [
+  // Define navigation items based on user role
+  const userNavigationItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/campaigns', label: 'Campaigns', icon: Target },
     { href: '/prospects', label: 'Prospects', icon: Users },
@@ -89,6 +90,17 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
     { href: '/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
+
+  const adminNavigationItems = [
+    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/admin/users', label: 'User Management', icon: Users },
+    { href: '/admin/ai-knowledge', label: 'AI Knowledge', icon: Settings },
+    { href: '/admin/user-knowledge', label: 'User Knowledge', icon: MessageSquare },
+    { href: '/admin/onboarding', label: 'Onboarding', icon: Target },
+  ];
+
+  // Select navigation items based on user role
+  const navigationItems = user?.role === 'admin' ? adminNavigationItems : userNavigationItems;
 
   if (!user) {
     return null;
@@ -101,7 +113,9 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Lync Bot Dashboard</h1>
+              <h1 className="text-xl font-semibold text-gray-900">
+                {user?.role === 'admin' ? 'Lync Bot Admin' : 'Lync Bot Dashboard'}
+              </h1>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -117,7 +131,7 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
                     {user?.firstName || user?.email}
                   </div>
                   <div className="text-gray-500 capitalize">
-                    {user?.role} - {user?.subscription?.plan || 'free'}
+                    {user?.role === 'admin' ? 'Administrator' : `${user?.role} - ${user?.subscription?.plan || 'free'}`}
                   </div>
                 </div>
               </div>
@@ -137,7 +151,9 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
         {/* Sidebar Navigation */}
         <aside className="bg-white border-r border-gray-200 w-64 flex-shrink-0 overflow-y-auto">
           <div className="px-4 py-5 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Navigation</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {user?.role === 'admin' ? 'Admin Panel' : 'Navigation'}
+            </h2>
           </div>
           <nav className="mt-2">
             <div className="space-y-1">
@@ -160,30 +176,6 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
                   </Link>
                 );
               })}
-              
-              {/* Admin Only Links */}
-              {user?.role === 'admin' && (
-                <>
-                  <div className="border-t border-gray-200 mt-4 pt-4">
-                    <div className="px-4 py-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Admin
-                      </p>
-                    </div>
-                    <Link
-                      href="/admin/users"
-                      className={`flex items-center px-4 py-2 text-sm transition-colors ${
-                        router.pathname === '/admin/users'
-                          ? 'bg-blue-50 text-blue-600 font-medium'
-                          : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                      }`}
-                    >
-                      <Shield className="h-5 w-5 mr-3" />
-                      User Management
-                    </Link>
-                  </div>
-                </>
-              )}
             </div>
           </nav>
         </aside>
