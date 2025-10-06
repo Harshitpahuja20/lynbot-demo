@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getCurrentUser, getToken, removeToken } from '../../utils/auth';
+import { getCurrentUser, getToken, removeToken, setToken } from '../../utils/auth';
 import Layout from '../../components/Layout';
 import { 
   Users, 
