@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getCurrentUser, getToken, removeToken, logout } from '../../utils/auth';
+import { getCurrentUser, getToken, logout } from '../../utils/auth';
 import AdminLayout from '../../components/AdminLayout';
 import { 
   Users, 
   Search, 
-  Filter, 
-  MoreVertical, 
   Edit, 
   Trash2, 
   Shield, 
@@ -19,19 +17,19 @@ import {
 } from 'lucide-react';
 
 interface UserData {
-  _id: string;
+  id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   company?: string;
   role: 'user' | 'admin';
   subscription: {
     plan: 'free' | 'full_access';
     status: 'active' | 'inactive';
   };
-  isActive: boolean;
-  lastLogin?: string;
-  createdAt: string;
+  is_active: boolean;
+  last_login?: string;
+  created_at: string;
 }
 
 const AdminUsersPage: React.FC = () => {
@@ -105,7 +103,9 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    
     setActionLoading(true);
     try {
       const token = getToken();
@@ -114,7 +114,7 @@ const AdminUsersPage: React.FC = () => {
         return;
       }
       
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -129,7 +129,7 @@ const AdminUsersPage: React.FC = () => {
         throw new Error('Failed to delete user');
       }
 
-      setUsers(users.filter(u => u._id !== userId));
+      setUsers(users.filter(u => u.id !== selectedUser.id));
       setShowDeleteModal(false);
       setSelectedUser(null);
     } catch (err) {
@@ -142,15 +142,15 @@ const AdminUsersPage: React.FC = () => {
   const handleEditUser = (user: UserData) => {
     setSelectedUser(user);
     setEditFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
+      first_name: user.first_name,
+      last_name: user.last_name,
       company: user.company,
       role: user.role,
       subscription: {
         plan: user.subscription.plan,
         status: user.subscription.status
       },
-      isActive: user.isActive
+      is_active: user.is_active
     });
     setShowEditModal(true);
   };
@@ -166,7 +166,7 @@ const AdminUsersPage: React.FC = () => {
         return;
       }
       
-      const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -184,7 +184,7 @@ const AdminUsersPage: React.FC = () => {
       }
 
       const data = await response.json();
-      setUsers(users.map(u => u._id === selectedUser._id ? data.user : u));
+      setUsers(users.map(u => u.id === selectedUser.id ? data.user : u));
       setShowEditModal(false);
       setSelectedUser(null);
       setEditFormData({});
@@ -210,7 +210,7 @@ const AdminUsersPage: React.FC = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ isActive: !currentStatus })
+        body: JSON.stringify({ is_active: !currentStatus })
       });
 
       if (!response.ok) {
@@ -222,7 +222,7 @@ const AdminUsersPage: React.FC = () => {
       }
 
       const data = await response.json();
-      setUsers(users.map(u => u._id === userId ? { ...u, isActive: data.user.isActive } : u));
+      setUsers(users.map(u => u.id === userId ? { ...u, is_active: data.user.is_active } : u));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user status');
     } finally {
@@ -233,24 +233,26 @@ const AdminUsersPage: React.FC = () => {
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.company && user.company.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'active' && user.isActive) ||
-      (filterStatus === 'inactive' && !user.isActive);
+      (filterStatus === 'active' && user.is_active) ||
+      (filterStatus === 'inactive' && !user.is_active);
 
     return matchesSearch && matchesRole && matchesStatus;
   });
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading users...</span>
-      </div>
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-600">Loading users...</span>
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -337,7 +339,7 @@ const AdminUsersPage: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredUsers.map((userData) => (
-                  <tr key={userData._id} className="hover:bg-gray-50">
+                  <tr key={userData.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
@@ -349,7 +351,7 @@ const AdminUsersPage: React.FC = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {userData.firstName} {userData.lastName}
+                            {userData.first_name} {userData.last_name}
                           </div>
                           <div className="text-sm text-gray-500">{userData.email}</div>
                           {userData.company && (
@@ -378,16 +380,16 @@ const AdminUsersPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        userData.isActive 
+                        userData.is_active 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {userData.isActive ? 'Active' : 'Inactive'}
+                        {userData.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {userData.lastLogin 
-                        ? new Date(userData.lastLogin).toLocaleDateString()
+                      {userData.last_login 
+                        ? new Date(userData.last_login).toLocaleDateString()
                         : 'Never'
                       }
                     </td>
@@ -401,15 +403,15 @@ const AdminUsersPage: React.FC = () => {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleToggleUserStatus(userData._id, userData.isActive)}
+                          onClick={() => handleToggleUserStatus(userData.id, userData.is_active)}
                           disabled={actionLoading}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            userData.isActive
+                            userData.is_active
                               ? 'bg-red-100 text-red-700 hover:bg-red-200'
                               : 'bg-green-100 text-green-700 hover:bg-green-200'
                           } disabled:opacity-50`}
                         >
-                          {userData.isActive ? 'Deactivate' : 'Activate'}
+                          {userData.is_active ? 'Deactivate' : 'Activate'}
                         </button>
                         <button
                           onClick={() => {
@@ -468,8 +470,8 @@ const AdminUsersPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={editFormData.firstName || ''}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                      value={editFormData.first_name || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, first_name: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -479,8 +481,8 @@ const AdminUsersPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={editFormData.lastName || ''}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                      value={editFormData.last_name || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, last_name: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -557,8 +559,8 @@ const AdminUsersPage: React.FC = () => {
                   <label className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={editFormData.isActive || false}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                      checked={editFormData.is_active || false}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                       className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                     />
                     <span className="ml-2 text-sm text-gray-700">Account Active</span>
@@ -612,7 +614,7 @@ const AdminUsersPage: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mt-4">Delete User</h3>
               <div className="mt-2 px-7 py-3">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to delete <strong>{selectedUser.firstName} {selectedUser.lastName}</strong>? 
+                  Are you sure you want to delete <strong>{selectedUser.first_name} {selectedUser.last_name}</strong>? 
                   This action cannot be undone.
                 </p>
               </div>
@@ -628,7 +630,7 @@ const AdminUsersPage: React.FC = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleDeleteUser(selectedUser._id)}
+                  onClick={handleDeleteUser}
                   disabled={actionLoading}
                   className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 >
