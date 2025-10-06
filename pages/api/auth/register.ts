@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { userOperations } from '../../../lib/database';
+import { getSupabaseAdminClient } from '../../../lib/supabase';
+import bcrypt from 'bcryptjs';
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,7 +29,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check if user already exists
-    const existingUser = await userOperations.findByEmail(email);
+    const supabase = getSupabaseAdminClient();
+    const { data: existingUser, error: findError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email.toLowerCase())
+      .single();
+    
+    if (findError && findError.code !== 'PGRST116') {
+      console.error('Error checking existing user:', findError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database error occurred'
+      });
+    }
+    
     if (existingUser) {
       return res.status(400).json({ 
         success: false,
@@ -36,20 +52,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Hash password
-    const hashedPassword = await userOperations.hashPassword(password);
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
     
-    const user = await userOperations.create({
+    const { data: user, error: createError } = await supabase
+      .from('users')
+      .insert([{
       email: email.toLowerCase(),
       password_hash: hashedPassword,
       first_name: firstName,
       last_name: lastName,
       company,
       role: 'user',
+      subscription: {
+        plan: 'free',
+        status: 'inactive'
+      },
       email_verified: true,
       onboarding_complete: false,
       is_active: true,
       email_accounts: [],
-      subscription: { plan: 'free', status: 'inactive' },
       linkedin_accounts: [],
       api_keys: {},
       settings: {
@@ -75,7 +97,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         totalCampaigns: 0,
         totalProspects: 0
       }
-    });
+      }])
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating user:', createError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create user account'
+      });
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -94,7 +126,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     // Remove password from response
-    const { password_hash, ...userResponse } = user;
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      company: user.company,
+      role: user.role,
+      subscription: user.subscription,
+      email_verified: user.email_verified,
+      onboarding_complete: user.onboarding_complete
+    };
+    
     res.status(201).json({
       success: true,
       message: 'User registered successfully',

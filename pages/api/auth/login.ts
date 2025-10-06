@@ -28,6 +28,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('email', email.toLowerCase())
       .single();
     
+    if (findError && findError.code !== 'PGRST116') {
+      console.error('Database error during login:', findError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database error occurred'
+      });
+    }
+    
     if (!user) {
       return res.status(401).json({ 
         success: false,

@@ -411,13 +411,50 @@ export interface Message {
 export const userOperations = {
   async create(userData: Omit<User, 'id' | 'created_at' | 'updated_at'>) {
     const supabase = getSupabaseAdminClient()
+    
+    // Ensure we don't have any undefined values that could cause issues
+    const cleanUserData = {
+      ...userData,
+      email: userData.email.toLowerCase(),
+      company: userData.company || null,
+      subscription: userData.subscription || { plan: 'free', status: 'inactive' },
+      linkedin_accounts: userData.linkedin_accounts || [],
+      email_accounts: userData.email_accounts || [],
+      api_keys: userData.api_keys || {},
+      settings: userData.settings || {
+        timezone: 'UTC',
+        workingHours: { start: 9, end: 18 },
+        workingDays: [1, 2, 3, 4, 5],
+        automation: {
+          enabled: false,
+          connectionRequests: { enabled: false },
+          welcomeMessages: { enabled: false },
+          followUpMessages: { enabled: false },
+          profileViews: { enabled: false }
+        },
+        notifications: {
+          email: true,
+          webhook: false
+        }
+      },
+      usage: userData.usage || {
+        totalConnections: 0,
+        totalMessages: 0,
+        totalCampaigns: 0,
+        totalProspects: 0
+      }
+    };
+    
     const { data, error } = await supabase
       .from('users')
-      .insert([userData])
+      .insert([cleanUserData])
       .select()
       .single()
     
-    if (error) throw error
+    if (error) {
+      console.error('Database error creating user:', error);
+      throw new Error(`Failed to create user: ${error.message}`);
+    }
     return data
   },
 
