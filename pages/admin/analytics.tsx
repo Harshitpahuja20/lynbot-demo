@@ -102,12 +102,12 @@ const AdminAnalyticsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <Layout>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <span className="ml-2 text-gray-600">Loading analytics...</span>
         </div>
-      </AdminLayout>
+      </Layout>
     );
   }
 
