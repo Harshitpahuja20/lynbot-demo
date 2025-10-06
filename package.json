@@ -17,6 +17,7 @@
     "@types/nodemailer": "^7.0.2",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.2.0",
+    "formidable": "^3.5.4",
     "imapflow": "^1.0.198",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.344.0",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.13.4",
+    "@types/formidable": "^3.4.5",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
