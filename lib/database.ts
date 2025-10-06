@@ -87,12 +87,6 @@ export interface User {
       temperature: number
       maxTokens: number
     }
-    aiProvider: {
-      provider: 'openai' | 'perplexity' | 'claude'
-      model: string
-      temperature: number
-      maxTokens: number
-    }
     automation: {
       enabled: boolean
       connectionRequests: { enabled: boolean }
