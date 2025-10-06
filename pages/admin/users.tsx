@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getCurrentUser, getToken, removeToken } from '../../utils/auth';
+import { getCurrentUser, getToken, removeToken, logout } from '../../utils/auth';
 import Layout from '../../components/Layout';
 import { 
   Users, 
@@ -70,8 +70,7 @@ const AdminUsersPage: React.FC = () => {
       
       const token = getToken();
       if (!token) {
-        removeToken(); // Clear any invalid tokens
-        router.push('/signin');
+        logout(); // Use logout function for proper cleanup
         return;
       }
       
@@ -85,8 +84,7 @@ const AdminUsersPage: React.FC = () => {
       if (!response.ok) {
         if (response.status === 401) {
           // Token is invalid or expired, clear it and redirect to login
-          removeToken();
-          router.push('/signin');
+          logout(); // Use logout function for proper cleanup
           return;
         }
         if (response.status === 304) {
@@ -115,8 +113,7 @@ const AdminUsersPage: React.FC = () => {
     try {
       const token = getToken();
       if (!token) {
-        removeToken();
-        router.push('/signin');
+        logout();
         return;
       }
       
@@ -129,8 +126,7 @@ const AdminUsersPage: React.FC = () => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          removeToken();
-          router.push('/signin');
+          logout();
           return;
         }
         throw new Error('Failed to delete user');
@@ -169,8 +165,7 @@ const AdminUsersPage: React.FC = () => {
     try {
       const token = getToken();
       if (!token) {
-        removeToken();
-        router.push('/signin');
+        logout();
         return;
       }
       
@@ -185,8 +180,7 @@ const AdminUsersPage: React.FC = () => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          removeToken();
-          router.push('/signin');
+          logout();
           return;
         }
         throw new Error('Failed to update user');
@@ -209,8 +203,7 @@ const AdminUsersPage: React.FC = () => {
     try {
       const token = getToken();
       if (!token) {
-        removeToken();
-        router.push('/signin');
+        logout();
         return;
       }
       
@@ -225,8 +218,7 @@ const AdminUsersPage: React.FC = () => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          removeToken();
-          router.push('/signin');
+          logout();
           return;
         }
         throw new Error('Failed to update user status');
