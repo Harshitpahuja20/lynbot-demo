@@ -114,7 +114,6 @@ async function handleCreateUser(req: AuthenticatedRequest, res: NextApiResponse)
       last_name,
       company,
       role,
-      email_accounts: [],
       email_verified: true,
       onboarding_complete: true,
       is_active: true,
@@ -131,8 +130,7 @@ async function handleCreateUser(req: AuthenticatedRequest, res: NextApiResponse)
           connectionRequests: { enabled: false },
           welcomeMessages: { enabled: false },
           followUpMessages: { enabled: false },
-          profileViews: { enabled: false },
-          emailSending: { enabled: false }
+          profileViews: { enabled: false }
         },
         notifications: {
           email: true,

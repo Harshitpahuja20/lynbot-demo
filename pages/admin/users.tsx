@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getCurrentUser, getToken, logout } from '../../utils/auth';
 import AdminLayout from '../../components/AdminLayout';
+import { getToken, logout } from '../../utils/auth';
 import { 
   Users, 
   Search, 
@@ -13,7 +13,8 @@ import {
   AlertCircle,
   CheckCircle,
   X,
-  Save
+  Save,
+  Plus
 } from 'lucide-react';
 
 interface UserData {
@@ -34,32 +35,31 @@ interface UserData {
 
 const AdminUsersPage: React.FC = () => {
   const router = useRouter();
-  const user = getCurrentUser();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'user' | 'admin'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<UserData>>({});
+  const [createFormData, setCreateFormData] = useState({
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    company: '',
+    role: 'user' as 'user' | 'admin'
+  });
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/signin');
-      return;
-    }
-
-    if (user.role !== 'admin') {
-      router.push('/dashboard');
-      return;
-    }
-
     fetchUsers();
-  }, [user, router]);
+  }, []);
 
   const fetchUsers = async () => {
     try {
@@ -90,16 +90,70 @@ const AdminUsersPage: React.FC = () => {
       const data = await response.json();
       if (data.success && Array.isArray(data.users)) {
         setUsers(data.users);
+        setError('');
       } else {
         console.error('Invalid users data received:', data);
-        setUsers([]);
+        setError('Invalid response format received');
       }
     } catch (err) {
       console.error('Error fetching users:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
-      setUsers([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!createFormData.email || !createFormData.password || !createFormData.first_name || !createFormData.last_name) {
+      setError('All required fields must be filled');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        logout();
+        return;
+      }
+      
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(createFormData)
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          logout();
+          return;
+        }
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create user');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setUsers(prev => [data.user, ...prev]);
+        setShowCreateModal(false);
+        setCreateFormData({
+          email: '',
+          password: '',
+          first_name: '',
+          last_name: '',
+          company: '',
+          role: 'user'
+        });
+        setSuccess('User created successfully!');
+        setError('');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create user');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -188,6 +242,8 @@ const AdminUsersPage: React.FC = () => {
       setShowEditModal(false);
       setSelectedUser(null);
       setEditFormData({});
+      setSuccess('User updated successfully!');
+      setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user');
     } finally {
@@ -223,6 +279,8 @@ const AdminUsersPage: React.FC = () => {
 
       const data = await response.json();
       setUsers(users.map(u => u.id === userId ? { ...u, is_active: data.user.is_active } : u));
+      setSuccess(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+      setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user status');
     } finally {
@@ -259,10 +317,33 @@ const AdminUsersPage: React.FC = () => {
   return (
     <AdminLayout error={error} onClearError={() => setError('')}>
       <div className="space-y-6">
+        {/* Success Message */}
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
+            <CheckCircle className="w-5 h-5" />
+            {success}
+            <button
+              onClick={() => setSuccess('')}
+              className="ml-auto text-green-500 hover:text-green-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600">Manage user accounts and permissions</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+            <p className="text-gray-600">Manage user accounts and permissions</p>
+          </div>
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add User
+          </button>
         </div>
 
         {/* Filters and Search */}
@@ -594,6 +675,153 @@ const AdminUsersPage: React.FC = () => {
                     <>
                       <Save className="w-4 h-4 mr-2 inline" />
                       Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Create New User</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateFormData({
+                      email: '',
+                      password: '',
+                      first_name: '',
+                      last_name: '',
+                      company: '',
+                      role: 'user'
+                    });
+                    setError('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={createFormData.email}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="user@example.com"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password *
+                  </label>
+                  <input
+                    type="password"
+                    value={createFormData.password}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Minimum 8 characters"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={createFormData.first_name}
+                      onChange={(e) => setCreateFormData(prev => ({ ...prev, first_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={createFormData.last_name}
+                      onChange={(e) => setCreateFormData(prev => ({ ...prev, last_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Company
+                  </label>
+                  <input
+                    type="text"
+                    value={createFormData.company}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, company: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    value={createFormData.role}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, role: e.target.value as 'user' | 'admin' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateFormData({
+                      email: '',
+                      password: '',
+                      first_name: '',
+                      last_name: '',
+                      company: '',
+                      role: 'user'
+                    });
+                    setError('');
+                  }}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={actionLoading || !createFormData.email || !createFormData.password || !createFormData.first_name || !createFormData.last_name}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {actionLoading ? (
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Creating...
+                    </div>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2 inline" />
+                      Create User
                     </>
                   )}
                 </button>
