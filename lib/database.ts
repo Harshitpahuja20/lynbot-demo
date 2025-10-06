@@ -410,14 +410,20 @@ export interface Message {
 // User operations
 export const userOperations = {
   async create(userData: Omit<User, 'id' | 'created_at' | 'updated_at'>) {
-    const supabase = getSupabaseAdminClient()
+    const supabase = getSupabaseAdminClient();
     
-    // Ensure we don't have any undefined values that could cause issues
+    // Clean and validate user data
     const cleanUserData = {
-      ...userData,
       email: userData.email.toLowerCase(),
+      password_hash: userData.password_hash,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
       company: userData.company || null,
+      role: userData.role || 'user',
       subscription: userData.subscription || { plan: 'free', status: 'inactive' },
+      email_verified: userData.email_verified !== undefined ? userData.email_verified : false,
+      onboarding_complete: userData.onboarding_complete !== undefined ? userData.onboarding_complete : false,
+      is_active: userData.is_active !== undefined ? userData.is_active : true,
       linkedin_accounts: userData.linkedin_accounts || [],
       email_accounts: userData.email_accounts || [],
       api_keys: userData.api_keys || {},
@@ -449,13 +455,18 @@ export const userOperations = {
       .from('users')
       .insert([cleanUserData])
       .select()
-      .single()
+      .single();
     
     if (error) {
       console.error('Database error creating user:', error);
       throw new Error(`Failed to create user: ${error.message}`);
     }
-    return data
+    
+    if (!data) {
+      throw new Error('User creation failed - no data returned');
+    }
+    
+    return data;
   },
 
   async findByEmail(email: string) {

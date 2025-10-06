@@ -7,7 +7,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ 
+      success: false,
+      error: 'Method not allowed' 
+    });
   }
 
   try {
@@ -28,26 +31,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Check if user already exists
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Please enter a valid email address' 
+      });
+    }
+
     const supabase = getSupabaseAdminClient();
+
+    // Check if user already exists
     const { data: existingUser, error: findError } = await supabase
       .from('users')
       .select('email')
       .eq('email', email.toLowerCase())
-      .single();
+      .maybeSingle();
     
-    if (findError && findError.code !== 'PGRST116') {
+    if (findError) {
       console.error('Error checking existing user:', findError);
       return res.status(500).json({
         success: false,
-        error: 'Database error occurred'
+        error: 'Database error occurred while checking existing user'
       });
     }
     
     if (existingUser) {
       return res.status(400).json({ 
         success: false,
-        error: 'User with this email already exists' 
+        error: 'An account with this email already exists. Please use a different email or sign in instead.' 
       });
     }
 
@@ -55,24 +68,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    const { data: user, error: createError } = await supabase
-      .from('users')
-      .insert([{
-      email: email.toLowerCase(),
+    // Create user with proper data structure
+    const userData = {
+      email: email.toLowerCase().trim(),
       password_hash: hashedPassword,
-      first_name: firstName,
-      last_name: lastName,
-      company,
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      company: company ? company.trim() : null,
       role: 'user',
       subscription: {
         plan: 'free',
-        status: 'inactive'
+        status: 'active'
       },
       email_verified: true,
       onboarding_complete: false,
       is_active: true,
-      email_accounts: [],
       linkedin_accounts: [],
+      email_accounts: [],
       api_keys: {},
       settings: {
         timezone: 'UTC',
@@ -83,8 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           connectionRequests: { enabled: false },
           welcomeMessages: { enabled: false },
           followUpMessages: { enabled: false },
-          profileViews: { enabled: false },
-          emailSending: { enabled: false }
+          profileViews: { enabled: false }
         },
         notifications: {
           email: true,
@@ -97,7 +108,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         totalCampaigns: 0,
         totalProspects: 0
       }
-      }])
+    };
+
+    const { data: user, error: createError } = await supabase
+      .from('users')
+      .insert([userData])
       .select()
       .single();
 
@@ -105,7 +120,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Error creating user:', createError);
       return res.status(500).json({
         success: false,
-        error: 'Failed to create user account'
+        error: 'Failed to create user account. Please try again.'
+      });
+    }
+
+    if (!user) {
+      return res.status(500).json({
+        success: false,
+        error: 'User creation failed - no user data returned'
       });
     }
 
@@ -125,32 +147,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { expiresIn: '30d' }
     );
 
-    // Remove password from response
-    const userResponse = {
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      company: user.company,
-      role: user.role,
-      subscription: user.subscription,
-      email_verified: user.email_verified,
-      onboarding_complete: user.onboarding_complete
-    };
-    
+    // Return success response
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'Account created successfully',
       token,
-      user: userResponse,
-      redirectTo: user.role === 'admin' ? '/admin/users' : '/dashboard'
+      user: {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        company: user.company,
+        role: user.role,
+        subscription: user.subscription,
+        email_verified: user.email_verified,
+        onboarding_complete: user.onboarding_complete
+      },
+      redirectTo: user.role === 'admin' ? '/admin/analytics' : '/onboarding'
     });
 
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ 
       success: false,
-      error: 'Failed to register user' 
+      error: 'An unexpected error occurred during registration. Please try again.' 
     });
   }
 }

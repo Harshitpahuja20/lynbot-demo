@@ -56,6 +56,7 @@ const SignUpPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
     
     if (!validateForm()) {
       return;
@@ -81,14 +82,21 @@ const SignUpPage: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error('Registration failed:', data);
-        throw new Error(data.error || 'Registration failed. Please try again.');
+        const errorMessage = data.error || 'Registration failed. Please try again.';
+        console.error('Registration failed:', { status: response.status, error: errorMessage, data });
+        throw new Error(errorMessage);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Registration failed');
       }
 
       setSuccess(true);
       
       // Store token and redirect after a brief success message
-      setToken(data.token);
+      if (data.token) {
+        setToken(data.token);
+      }
       
       setTimeout(() => {
         if (data.redirectTo) {
@@ -101,6 +109,7 @@ const SignUpPage: React.FC = () => {
       }, 2000);
 
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
@@ -117,8 +126,11 @@ const SignUpPage: React.FC = () => {
               Account Created Successfully!
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Redirecting you to complete your setup...
+              Welcome to Lync Bot! Redirecting you to complete your setup...
             </p>
+            <div className="mt-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+            </div>
           </div>
         </div>
       </div>
