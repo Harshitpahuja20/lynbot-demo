@@ -93,7 +93,7 @@ export interface User {
       welcomeMessages: { enabled: boolean }
       followUpMessages: { enabled: boolean }
       profileViews: { enabled: boolean }
-      emailSending: { enabled: boolean }
+      emailSending?: { enabled: boolean }
     }
     notifications: {
       email: boolean

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { getSupabaseAdminClient } from '../../../lib/supabase';
+import { userOperations } from '../../../lib/database';
 import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -40,23 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const supabase = getSupabaseAdminClient();
-
     // Check if user already exists
-    const { data: existingUser, error: findError } = await supabase
-      .from('users')
-      .select('email')
-      .eq('email', email.toLowerCase())
-      .maybeSingle();
-    
-    if (findError) {
-      console.error('Error checking existing user:', findError);
-      return res.status(500).json({
-        success: false,
-        error: 'Database error occurred while checking existing user'
-      });
-    }
-    
+    const existingUser = await userOperations.findByEmail(email);
     if (existingUser) {
       return res.status(400).json({ 
         success: false,
@@ -65,11 +50,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Hash password
-    const salt = await bcrypt.genSalt(12);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await userOperations.hashPassword(password);
     
     // Create user with proper data structure
-    const userData = {
+    const user = await userOperations.create({
       email: email.toLowerCase().trim(),
       password_hash: hashedPassword,
       first_name: firstName.trim(),
@@ -108,28 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         totalCampaigns: 0,
         totalProspects: 0
       }
-    };
-
-    const { data: user, error: createError } = await supabase
-      .from('users')
-      .insert([userData])
-      .select()
-      .single();
-
-    if (createError) {
-      console.error('Error creating user:', createError);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to create user account. Please try again.'
-      });
-    }
-
-    if (!user) {
-      return res.status(500).json({
-        success: false,
-        error: 'User creation failed - no user data returned'
-      });
-    }
+    });
 
     // Generate JWT token
     const token = jwt.sign(
