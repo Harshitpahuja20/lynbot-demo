@@ -36,6 +36,7 @@ export default function Campaigns() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [searchingProspects, setSearchingProspects] = useState<string | null>(null);
+  const [searchType, setSearchType] = useState<'standard' | 'sales_navigator'>('standard');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -50,6 +51,83 @@ export default function Campaigns() {
       school: '',
       salesNavigatorUrl: '',
       customFilters: ''
+    },
+    salesNavigatorCriteria: {
+      // Company
+      company: '',
+      currentCompany: '',
+      expandCurrentCompany: false,
+      companyHeadcount: '',
+      expandCompanyHeadcount: false,
+      pastCompany: '',
+      expandPastCompany: false,
+      companyType: '',
+      expandCompanyType: false,
+      companyHeadquarters: '',
+      expandCompanyHeadquarters: false,
+      
+      // Role
+      function: '',
+      expandFunction: false,
+      currentJobTitle: '',
+      expandCurrentJobTitle: false,
+      seniorityLevel: '',
+      expandSeniorityLevel: false,
+      pastJobTitle: '',
+      expandPastJobTitle: false,
+      yearsInCurrentCompany: '',
+      expandYearsInCurrentCompany: false,
+      yearsInCurrentPosition: '',
+      expandYearsInCurrentPosition: false,
+      
+      // Personal
+      geography: '',
+      expandGeography: false,
+      industry: '',
+      expandIndustry: false,
+      firstName: '',
+      expandFirstName: false,
+      lastName: '',
+      expandLastName: false,
+      profileLanguage: '',
+      expandProfileLanguage: false,
+      yearsOfExperience: '',
+      expandYearsOfExperience: false,
+      groups: '',
+      expandGroups: false,
+      school: '',
+      expandSchool: false,
+      
+      // Buyer intent
+      categoryInterest: '',
+      expandCategoryInterest: false,
+      followingYourCompany: false,
+      viewedYourProfile: false,
+      
+      // Best path in
+      connection: '',
+      expandConnection: false,
+      connectionsOf: '',
+      expandConnectionsOf: false,
+      pastColleague: false,
+      sharedExperiences: false,
+      
+      // Recent updates
+      changedJobs: false,
+      postedOnLinkedIn: false,
+      
+      // Workflow
+      persona: '',
+      expandPersona: false,
+      accountLists: '',
+      expandAccountLists: false,
+      leadLists: '',
+      expandLeadLists: false,
+      peopleInCRM: '',
+      expandPeopleInCRM: false,
+      peopleYouInteractedWith: '',
+      expandPeopleYouInteractedWith: false,
+      savedLeadsAndAccounts: ''
     }
   });
 
@@ -246,8 +324,73 @@ export default function Campaigns() {
         school: '',
         salesNavigatorUrl: '',
         customFilters: ''
+      },
+      salesNavigatorCriteria: {
+        company: '',
+        currentCompany: '',
+        expandCurrentCompany: false,
+        companyHeadcount: '',
+        expandCompanyHeadcount: false,
+        pastCompany: '',
+        expandPastCompany: false,
+        companyType: '',
+        expandCompanyType: false,
+        companyHeadquarters: '',
+        expandCompanyHeadquarters: false,
+        function: '',
+        expandFunction: false,
+        currentJobTitle: '',
+        expandCurrentJobTitle: false,
+        seniorityLevel: '',
+        expandSeniorityLevel: false,
+        pastJobTitle: '',
+        expandPastJobTitle: false,
+        yearsInCurrentCompany: '',
+        expandYearsInCurrentCompany: false,
+        yearsInCurrentPosition: '',
+        expandYearsInCurrentPosition: false,
+        geography: '',
+        expandGeography: false,
+        industry: '',
+        expandIndustry: false,
+        firstName: '',
+        expandFirstName: false,
+        lastName: '',
+        expandLastName: false,
+        profileLanguage: '',
+        expandProfileLanguage: false,
+        yearsOfExperience: '',
+        expandYearsOfExperience: false,
+        groups: '',
+        expandGroups: false,
+        school: '',
+        expandSchool: false,
+        categoryInterest: '',
+        expandCategoryInterest: false,
+        followingYourCompany: false,
+        viewedYourProfile: false,
+        connection: '',
+        expandConnection: false,
+        connectionsOf: '',
+        expandConnectionsOf: false,
+        pastColleague: false,
+        sharedExperiences: false,
+        changedJobs: false,
+        postedOnLinkedIn: false,
+        persona: '',
+        expandPersona: false,
+        accountLists: '',
+        expandAccountLists: false,
+        leadLists: '',
+        expandLeadLists: false,
+        peopleInCRM: '',
+        expandPeopleInCRM: false,
+        peopleYouInteractedWith: '',
+        expandPeopleYouInteractedWith: false,
+        savedLeadsAndAccounts: ''
       }
     });
+    setSearchType('standard');
   };
 
   const getSearchCriteriaPreview = (searchCriteria: Campaign['searchCriteria']) => {
@@ -453,155 +596,819 @@ export default function Campaigns() {
 
                 {/* LinkedIn Search Criteria */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">LinkedIn Search Criteria</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">LinkedIn Search Criteria</h3>
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-sm font-medium ${searchType === 'standard' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Standard Search
+                      </span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={searchType === 'sales_navigator'}
+                          onChange={(e) => setSearchType(e.target.checked ? 'sales_navigator' : 'standard')}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                      <span className={`text-sm font-medium ${searchType === 'sales_navigator' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Sales Navigator
+                      </span>
+                    </div>
+                  </div>
+                  
                   <p className="text-sm text-gray-600 mb-4">
-                    Define your target prospects. These criteria will be used when searching for prospects on LinkedIn.
+                    {searchType === 'standard' 
+                      ? 'Define your target prospects. These criteria will be used when searching for prospects on LinkedIn.'
+                      : 'Use LinkedIn Sales Navigator advanced search criteria for more precise targeting.'
+                    }
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Keywords
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.keywords}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, keywords: e.target.value }
-                        })}
-                        placeholder="e.g., software engineer, marketing"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                  {searchType === 'standard' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Keywords
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.keywords}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, keywords: e.target.value }
+                          })}
+                          placeholder="e.g., software engineer, marketing"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Location
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.location}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, location: e.target.value }
+                          })}
+                          placeholder="e.g., San Francisco, CA"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Current Company
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.currentCompany}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, currentCompany: e.target.value }
+                          })}
+                          placeholder="e.g., Google, Microsoft"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Job Title
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.title}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, title: e.target.value }
+                          })}
+                          placeholder="e.g., CEO, Director, Manager"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Industry
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.industry}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, industry: e.target.value }
+                          })}
+                          placeholder="e.g., Technology, Healthcare"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Connection Level
+                        </label>
+                        <select
+                          value={formData.searchCriteria.connectionLevel}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, connectionLevel: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="">Any connection level</option>
+                          <option value="1st">1st connections</option>
+                          <option value="2nd">2nd connections</option>
+                          <option value="3rd+">3rd+ connections</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Past Company
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.pastCompany}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, pastCompany: e.target.value }
+                          })}
+                          placeholder="e.g., Apple, Amazon"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          School
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.school}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, school: e.target.value }
+                          })}
+                          placeholder="e.g., Stanford, MIT"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Location
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.location}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, location: e.target.value }
-                        })}
-                        placeholder="e.g., San Francisco, CA"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Current Company
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.currentCompany}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, currentCompany: e.target.value }
-                        })}
-                        placeholder="e.g., Google, Microsoft"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Job Title
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.title}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, title: e.target.value }
-                        })}
-                        placeholder="e.g., CEO, Director, Manager"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Industry
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.industry}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, industry: e.target.value }
-                        })}
-                        placeholder="e.g., Technology, Healthcare"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Connection Level
-                      </label>
-                      <select
-                        value={formData.searchCriteria.connectionLevel}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, connectionLevel: e.target.value }
-                        })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      >
-                        <option value="">Any connection level</option>
-                        <option value="1st">1st connections</option>
-                        <option value="2nd">2nd connections</option>
-                        <option value="3rd+">3rd+ connections</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Past Company
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.pastCompany}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, pastCompany: e.target.value }
-                        })}
-                        placeholder="e.g., Apple, Amazon"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        School
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.school}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, school: e.target.value }
-                        })}
-                        placeholder="e.g., Stanford, MIT"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Company Section */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-md font-semibold text-gray-900 mb-4">Company</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Company
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.company}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, company: e.target.value }
+                              })}
+                              placeholder="Company name"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Current Company
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.currentCompany}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, currentCompany: e.target.value }
+                              })}
+                              placeholder="Current company"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Company Headcount
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.companyHeadcount}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, companyHeadcount: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any size</option>
+                              <option value="1-10">1-10 employees</option>
+                              <option value="11-50">11-50 employees</option>
+                              <option value="51-200">51-200 employees</option>
+                              <option value="201-500">201-500 employees</option>
+                              <option value="501-1000">501-1000 employees</option>
+                              <option value="1001-5000">1001-5000 employees</option>
+                              <option value="5001-10000">5001-10000 employees</option>
+                              <option value="10001+">10001+ employees</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Past Company
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.pastCompany}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, pastCompany: e.target.value }
+                              })}
+                              placeholder="Past company"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Company Type
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.companyType}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, companyType: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any type</option>
+                              <option value="public">Public Company</option>
+                              <option value="private">Private Company</option>
+                              <option value="nonprofit">Non-profit</option>
+                              <option value="government">Government Agency</option>
+                              <option value="educational">Educational Institution</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Company Headquarters
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.companyHeadquarters}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, companyHeadquarters: e.target.value }
+                              })}
+                              placeholder="Headquarters location"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Sales Navigator URL (Optional)
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.searchCriteria.salesNavigatorUrl}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        searchCriteria: { ...formData.searchCriteria, salesNavigatorUrl: e.target.value }
-                      })}
-                      placeholder="Paste LinkedIn Sales Navigator search URL"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      If provided, this URL will override the individual search criteria above
-                    </p>
-                  </div>
+                      {/* Role Section */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-md font-semibold text-gray-900 mb-4">Role</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Function
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.function}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, function: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any function</option>
+                              <option value="accounting">Accounting</option>
+                              <option value="administrative">Administrative</option>
+                              <option value="arts-design">Arts and Design</option>
+                              <option value="business-development">Business Development</option>
+                              <option value="community-social">Community & Social Services</option>
+                              <option value="consulting">Consulting</option>
+                              <option value="education">Education</option>
+                              <option value="engineering">Engineering</option>
+                              <option value="entrepreneurship">Entrepreneurship</option>
+                              <option value="finance">Finance</option>
+                              <option value="healthcare">Healthcare Services</option>
+                              <option value="human-resources">Human Resources</option>
+                              <option value="information-technology">Information Technology</option>
+                              <option value="legal">Legal</option>
+                              <option value="marketing">Marketing</option>
+                              <option value="media-communications">Media & Communications</option>
+                              <option value="military-protective">Military & Protective Services</option>
+                              <option value="operations">Operations</option>
+                              <option value="product-management">Product Management</option>
+                              <option value="program-project">Program and Project Management</option>
+                              <option value="purchasing">Purchasing</option>
+                              <option value="quality-assurance">Quality Assurance</option>
+                              <option value="real-estate">Real Estate</option>
+                              <option value="research">Research</option>
+                              <option value="sales">Sales</option>
+                              <option value="support">Support</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Current Job Title
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.currentJobTitle}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, currentJobTitle: e.target.value }
+                              })}
+                              placeholder="Current job title"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Seniority Level
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.seniorityLevel}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, seniorityLevel: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any level</option>
+                              <option value="unpaid">Unpaid</option>
+                              <option value="training">Training</option>
+                              <option value="entry">Entry level</option>
+                              <option value="associate">Associate</option>
+                              <option value="mid-senior">Mid-Senior level</option>
+                              <option value="director">Director</option>
+                              <option value="executive">Executive</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Past Job Title
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.pastJobTitle}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, pastJobTitle: e.target.value }
+                              })}
+                              placeholder="Past job title"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Years in Current Company
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.yearsInCurrentCompany}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, yearsInCurrentCompany: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any duration</option>
+                              <option value="less-than-1">Less than 1 year</option>
+                              <option value="1-2">1-2 years</option>
+                              <option value="3-5">3-5 years</option>
+                              <option value="6-10">6-10 years</option>
+                              <option value="more-than-10">More than 10 years</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Years in Current Position
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.yearsInCurrentPosition}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, yearsInCurrentPosition: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any duration</option>
+                              <option value="less-than-1">Less than 1 year</option>
+                              <option value="1-2">1-2 years</option>
+                              <option value="3-5">3-5 years</option>
+                              <option value="6-10">6-10 years</option>
+                              <option value="more-than-10">More than 10 years</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Personal Section */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-md font-semibold text-gray-900 mb-4">Personal</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Geography
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.geography}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, geography: e.target.value }
+                              })}
+                              placeholder="Geographic location"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Industry
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.industry}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, industry: e.target.value }
+                              })}
+                              placeholder="Industry"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              First Name
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.firstName}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, firstName: e.target.value }
+                              })}
+                              placeholder="First name"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Last Name
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.lastName}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, lastName: e.target.value }
+                              })}
+                              placeholder="Last name"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Profile Language
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.profileLanguage}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, profileLanguage: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any language</option>
+                              <option value="en">English</option>
+                              <option value="es">Spanish</option>
+                              <option value="fr">French</option>
+                              <option value="de">German</option>
+                              <option value="it">Italian</option>
+                              <option value="pt">Portuguese</option>
+                              <option value="zh">Chinese</option>
+                              <option value="ja">Japanese</option>
+                              <option value="ko">Korean</option>
+                              <option value="ar">Arabic</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Years of Experience
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.yearsOfExperience}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, yearsOfExperience: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any experience</option>
+                              <option value="1-2">1-2 years</option>
+                              <option value="3-5">3-5 years</option>
+                              <option value="6-10">6-10 years</option>
+                              <option value="11-15">11-15 years</option>
+                              <option value="16-20">16-20 years</option>
+                              <option value="20+">20+ years</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Groups
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.groups}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, groups: e.target.value }
+                              })}
+                              placeholder="LinkedIn groups"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              School
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.school}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, school: e.target.value }
+                              })}
+                              placeholder="School or university"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Buyer Intent Section */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-md font-semibold text-gray-900 mb-4">Buyer Intent</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Category Interest
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.categoryInterest}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, categoryInterest: e.target.value }
+                              })}
+                              placeholder="Category of interest"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div className="space-y-3">
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={formData.salesNavigatorCriteria.followingYourCompany}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, followingYourCompany: e.target.checked }
+                                })}
+                                className="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">Following your company</span>
+                            </label>
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={formData.salesNavigatorCriteria.viewedYourProfile}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, viewedYourProfile: e.target.checked }
+                                })}
+                                className="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">Viewed your profile recently</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Best Path In Section */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-md font-semibold text-gray-900 mb-4">Best Path In</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Connection
+                            </label>
+                            <select
+                              value={formData.salesNavigatorCriteria.connection}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, connection: e.target.value }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Any connection</option>
+                              <option value="1st">1st connections</option>
+                              <option value="2nd">2nd connections</option>
+                              <option value="3rd+">3rd+ connections</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Connections Of
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.connectionsOf}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, connectionsOf: e.target.value }
+                              })}
+                              placeholder="Connections of specific person"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div className="md:col-span-2 space-y-3">
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={formData.salesNavigatorCriteria.pastColleague}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, pastColleague: e.target.checked }
+                                })}
+                                className="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">Past colleague</span>
+                            </label>
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={formData.salesNavigatorCriteria.sharedExperiences}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, sharedExperiences: e.target.checked }
+                                })}
+                                className="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">Shared experiences</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Recent Updates Section */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-md font-semibold text-gray-900 mb-4">Recent Updates</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.salesNavigatorCriteria.changedJobs}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, changedJobs: e.target.checked }
+                              })}
+                              className="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">Changed jobs</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.salesNavigatorCriteria.postedOnLinkedIn}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, postedOnLinkedIn: e.target.checked }
+                              })}
+                              className="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">Posted on LinkedIn</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Workflow Section */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-md font-semibold text-gray-900 mb-4">Workflow</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Persona
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.persona}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, persona: e.target.value }
+                              })}
+                              placeholder="Persona type"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Account Lists
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.accountLists}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, accountLists: e.target.value }
+                              })}
+                              placeholder="Account lists"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Lead Lists
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.leadLists}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, leadLists: e.target.value }
+                              })}
+                              placeholder="Lead lists"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              People in CRM
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.peopleInCRM}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, peopleInCRM: e.target.value }
+                              })}
+                              placeholder="People in CRM"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              People You Interacted With
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.peopleYouInteractedWith}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, peopleYouInteractedWith: e.target.value }
+                              })}
+                              placeholder="People you've interacted with"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Saved Leads and Accounts
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.salesNavigatorCriteria.savedLeadsAndAccounts}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                salesNavigatorCriteria: { ...formData.salesNavigatorCriteria, savedLeadsAndAccounts: e.target.value }
+                              })}
+                              placeholder="Saved leads and accounts"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {searchType === 'standard' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sales Navigator URL (Optional)
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.searchCriteria.salesNavigatorUrl}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          searchCriteria: { ...formData.searchCriteria, salesNavigatorUrl: e.target.value }
+                        })}
+                        placeholder="Paste LinkedIn Sales Navigator search URL"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        If provided, this URL will override the individual search criteria above
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-3">
@@ -665,158 +1472,192 @@ export default function Campaigns() {
 
                 {/* LinkedIn Search Criteria */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">LinkedIn Search Criteria</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">LinkedIn Search Criteria</h3>
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-sm font-medium ${searchType === 'standard' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Standard Search
+                      </span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={searchType === 'sales_navigator'}
+                          onChange={(e) => setSearchType(e.target.checked ? 'sales_navigator' : 'standard')}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                      <span className={`text-sm font-medium ${searchType === 'sales_navigator' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Sales Navigator
+                      </span>
+                    </div>
+                  </div>
+                  
                   <p className="text-sm text-gray-600 mb-4">
-                    Define your target prospects using these criteria. The system will use these parameters to find and scrape profiles from LinkedIn, gathering comprehensive profile data including experience, education, skills, and company information for lead generation.
-                  </p>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Update your target prospect criteria for profile scraping and lead generation. These criteria work with LinkedIn Sales Navigator to find and analyze prospect profiles.
+                    {searchType === 'standard' 
+                      ? 'Update your target prospect criteria for profile scraping and lead generation.'
+                      : 'Use LinkedIn Sales Navigator advanced search criteria for more precise targeting.'
+                    }
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Keywords
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.keywords}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, keywords: e.target.value }
-                        })}
-                        placeholder="e.g., software engineer, marketing"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                  {searchType === 'standard' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Keywords
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.keywords}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, keywords: e.target.value }
+                          })}
+                          placeholder="e.g., software engineer, marketing"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Location
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.location}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, location: e.target.value }
+                          })}
+                          placeholder="e.g., San Francisco, CA"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Current Company
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.currentCompany}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, currentCompany: e.target.value }
+                          })}
+                          placeholder="e.g., Google, Microsoft"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Job Title
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.title}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, title: e.target.value }
+                          })}
+                          placeholder="e.g., CEO, Director, Manager"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Industry
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.industry}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, industry: e.target.value }
+                          })}
+                          placeholder="e.g., Technology, Healthcare"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Connection Level
+                        </label>
+                        <select
+                          value={formData.searchCriteria.connectionLevel}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, connectionLevel: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="">Any connection level</option>
+                          <option value="1st">1st connections</option>
+                          <option value="2nd">2nd connections</option>
+                          <option value="3rd+">3rd+ connections</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Past Company
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.pastCompany}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, pastCompany: e.target.value }
+                          })}
+                          placeholder="e.g., Apple, Amazon"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          School
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.searchCriteria.school}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            searchCriteria: { ...formData.searchCriteria, school: e.target.value }
+                          })}
+                          placeholder="e.g., Stanford, MIT"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Location
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.location}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, location: e.target.value }
-                        })}
-                        placeholder="e.g., San Francisco, CA"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                  ) : (
+                    <div className="text-center py-8 bg-blue-50 rounded-lg">
+                      <p className="text-blue-800 font-medium">Sales Navigator Search Fields</p>
+                      <p className="text-blue-600 text-sm mt-1">Advanced targeting options will be available here</p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Current Company
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.currentCompany}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, currentCompany: e.target.value }
-                        })}
-                        placeholder="e.g., Google, Microsoft"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Job Title
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.title}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, title: e.target.value }
-                        })}
-                        placeholder="e.g., CEO, Director, Manager"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Industry
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.industry}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, industry: e.target.value }
-                        })}
-                        placeholder="e.g., Technology, Healthcare"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Connection Level
-                      </label>
-                      <select
-                        value={formData.searchCriteria.connectionLevel}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, connectionLevel: e.target.value }
-                        })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      >
-                        <option value="">Any connection level</option>
-                        <option value="1st">1st connections</option>
-                        <option value="2nd">2nd connections</option>
-                        <option value="3rd+">3rd+ connections</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Past Company
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.pastCompany}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, pastCompany: e.target.value }
-                        })}
-                        placeholder="e.g., Apple, Amazon"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        School
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.searchCriteria.school}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          searchCriteria: { ...formData.searchCriteria, school: e.target.value }
-                        })}
-                        placeholder="e.g., Stanford, MIT"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Sales Navigator URL (Optional)
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.searchCriteria.salesNavigatorUrl}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        searchCriteria: { ...formData.searchCriteria, salesNavigatorUrl: e.target.value }
-                      })}
-                      placeholder="Paste LinkedIn Sales Navigator search URL"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      If provided, this URL will override the individual search criteria above
-                    </p>
-                  </div>
+                  {searchType === 'standard' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sales Navigator URL (Optional)
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.searchCriteria.salesNavigatorUrl}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          searchCriteria: { ...formData.searchCriteria, salesNavigatorUrl: e.target.value }
+                        })}
+                        placeholder="Paste LinkedIn Sales Navigator search URL"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        If provided, this URL will override the individual search criteria above
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-blue-50 rounded-lg">
+                      <p className="text-blue-800 font-medium">Sales Navigator Search Fields</p>
+                      <p className="text-blue-600 text-sm mt-1">Advanced targeting options available in edit mode</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-3">
