@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import { useWebSocket } from '../contexts/WebSocketContext';
 import { 
   Target, 
   Plus, 
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react';
 
 interface Campaign {
-  _id: string;
+  id: string;
   name: string;
   description?: string;
   status: 'draft' | 'active' | 'paused' | 'completed' | 'archived';
@@ -128,7 +129,17 @@ const CampaignsPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchStatus, setSearchStatus] = useState('');
   const [useSalesNavigator, setUseSalesNavigator] = useState(false);
+  const [userLinkedInAccounts, setUserLinkedInAccounts] = useState<any[]>([]);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedProspect, setSelectedProspect] = useState<any>(null);
+  const [generatedMessage, setGeneratedMessage] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+  const { socket, isConnected: wsConnected, emit } = useWebSocket();
   
   // Form data for create/edit
   const [formData, setFormData] = useState({
@@ -205,6 +216,82 @@ const CampaignsPage: React.FC = () => {
     fetchCampaigns();
   }, []);
 
+  // WebSocket event listeners for search
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleSearchStarted = (data: any) => {
+      setSearchLoading(true);
+      setSearchStatus(data.message || 'Search started...');
+      setError('');
+    };
+
+    const handleSearchStatus = (data: any) => {
+      setSearchStatus(data.message || 'Processing...');
+    };
+
+    const handleSearchComplete = (data: any) => {
+      setSearchLoading(false);
+      setSearchStatus('');
+      if (data.success) {
+        setError(`✅ Search completed! Found ${data.prospectsFound || 0} prospects.`);
+        setSearchResults(data.users || []);
+        setShowResultsModal(true);
+      } else {
+        setError(`❌ ${data.message || 'Search failed'}`);
+      }
+    };
+
+    const handleSearchError = (data: any) => {
+      setSearchLoading(false);
+      setSearchStatus('');
+      setError(`❌ ${data.message || 'Search failed'}`);
+    };
+
+    const handleSearchWarning = (data: any) => {
+      setSearchStatus(`⚠️ ${data.message || 'Warning during search'}`);
+    };
+
+    const handleMessageGenerated = (data: any) => {
+      console.log('Message generated:', data);
+      setMessageLoading(false);
+      if (data.success && data.message) {
+        setGeneratedMessage(data.message);
+      } else {
+        setError('❌ Failed to generate message');
+        setShowMessageModal(false);
+      }
+    };
+
+    const handleMessageSent = (data: any) => {
+      if (data.success) {
+        setError('✅ Message sent successfully!');
+      } else {
+        setError('❌ Failed to send message');
+      }
+    };
+
+    socket.on('searchStarted', handleSearchStarted);
+    socket.on('searchStatus', handleSearchStatus);
+    socket.on('searchComplete', handleSearchComplete);
+    socket.on('searchError', handleSearchError);
+    socket.on('searchWarning', handleSearchWarning);
+    socket.on('generateMessage', handleMessageGenerated);
+    socket.on('messageGenerated', handleMessageGenerated);
+    socket.on('messageSent', handleMessageSent);
+
+    return () => {
+      socket.off('searchStarted', handleSearchStarted);
+      socket.off('searchStatus', handleSearchStatus);
+      socket.off('searchComplete', handleSearchComplete);
+      socket.off('searchError', handleSearchError);
+      socket.off('searchWarning', handleSearchWarning);
+      socket.off('generateMessage', handleMessageGenerated);
+      socket.off('messageGenerated', handleMessageGenerated);
+      socket.off('messageSent', handleMessageSent);
+    };
+  }, [socket]);
+
   const fetchCampaigns = async () => {
     try {
       setLoading(true);
@@ -212,7 +299,7 @@ const CampaignsPage: React.FC = () => {
       
       const response = await fetch('/api/campaigns', {
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -228,6 +315,7 @@ const CampaignsPage: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         setCampaigns(data.campaigns || []);
+        setUserLinkedInAccounts(data.user?.linkedin_accounts || []);
       } else {
         throw new Error(data.error || 'Failed to fetch campaigns');
       }
@@ -258,7 +346,7 @@ const CampaignsPage: React.FC = () => {
       const response = await fetch('/api/campaigns', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(campaignData)
@@ -345,6 +433,274 @@ const CampaignsPage: React.FC = () => {
     setUseSalesNavigator(false);
   };
 
+  const handleEditCampaign = (campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    const defaultSearchCriteria = {
+      keywords: '',
+      location: '',
+      company: '',
+      title: '',
+      industry: '',
+      connectionLevel: 'all',
+      currentCompany: '',
+      pastCompany: '',
+      school: '',
+      profileLanguage: '',
+      serviceCategory: '',
+      nonprofit: '',
+      salesNavigatorUrl: ''
+    };
+
+    const defaultSalesNavigatorCriteria = {
+      company: '',
+      currentCompany: '',
+      companyHeadcount: '',
+      pastCompany: '',
+      companyType: '',
+      companyHeadquarters: '',
+      function: '',
+      currentJobTitle: '',
+      seniorityLevel: '',
+      pastJobTitle: '',
+      yearsInCurrentCompany: '',
+      yearsInCurrentPosition: '',
+      geography: '',
+      industry: '',
+      firstName: '',
+      lastName: '',
+      profileLanguage: '',
+      yearsOfExperience: '',
+      groups: '',
+      school: '',
+      categoryInterest: '',
+      followingYourCompany: false,
+      viewedProfileRecently: false,
+      connection: '',
+      connectionsOf: '',
+      pastColleague: false,
+      sharedExperiences: false,
+      changedJobs: false,
+      postedOnLinkedIn: false,
+      persona: '',
+      accountLists: '',
+      leadLists: '',
+      peopleInCRM: '',
+      peopleInteractedWith: '',
+      savedLeadsAccounts: ''
+    };
+
+    setFormData({
+      name: campaign.name,
+      description: campaign.description || '',
+      searchCriteria: {
+        ...defaultSearchCriteria,
+        ...(campaign.searchCriteria || {})
+      },
+      salesNavigatorCriteria: {
+        ...defaultSalesNavigatorCriteria,
+        ...(campaign.salesNavigatorCriteria || {})
+      }
+    });
+    setUseSalesNavigator(!!campaign.salesNavigatorCriteria);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateCampaign = async () => {
+    if (!selectedCampaign || !formData.name) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          searchCriteria: useSalesNavigator ? {} : formData.searchCriteria,
+          salesNavigatorCriteria: useSalesNavigator ? formData.salesNavigatorCriteria : undefined
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCampaigns(prev => prev.map(c => c.id === selectedCampaign.id ? data.campaign : c));
+        setShowEditModal(false);
+        setSelectedCampaign(null);
+        resetFormData();
+      }
+    } catch (err) {
+      setError('Failed to update campaign');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteCampaign = async () => {
+    if (!selectedCampaign) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        setCampaigns(prev => prev.filter(c => c.id !== selectedCampaign.id));
+        setShowDeleteModal(false);
+        setSelectedCampaign(null);
+      }
+    } catch (err) {
+      setError('Failed to delete campaign');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleGenerateMessage = async (prospect: any) => {
+    setMessageLoading(true);
+    setShowMessageModal(true);
+    
+    if (socket && wsConnected) {
+      emit('generateMessage', { 
+        recipientName: prospect.name,
+        recipientTitle: prospect.title,
+        profileUrl: prospect.profileUrl
+      });
+    } else {
+      // Fallback to API
+      try {
+        const response = await fetch('/api/ai/generate-message', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            recipientName: prospect.name,
+            recipientTitle: prospect.title,
+            profileUrl: prospect.profileUrl
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          setGeneratedMessage(data.message);
+        }
+      } catch (err) {
+        setError('Failed to generate message');
+      } finally {
+        setMessageLoading(false);
+      }
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedProspect || !generatedMessage) return;
+    
+    if (socket && wsConnected) {
+      emit('sendMessage', {
+        prospect: selectedProspect,
+        message: generatedMessage
+      });
+      setShowMessageModal(false);
+      setSelectedProspect(null);
+      setGeneratedMessage('');
+      setError('✅ Message sent successfully!');
+    } else {
+      // Fallback to API
+      try {
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prospectId: selectedProspect.id,
+            message: generatedMessage
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          setShowMessageModal(false);
+          setSelectedProspect(null);
+          setGeneratedMessage('');
+          setError('✅ Message sent successfully!');
+        }
+      } catch (err) {
+        setError('Failed to send message');
+      }
+    }
+  };
+
+  const handleRunCampaign = async (campaign: Campaign) => {
+    if (searchLoading) {
+      setError('⏳ Another search is already in progress. Please wait...');
+      return;
+    }
+
+    const hasSalesNavigator = campaign.salesNavigatorCriteria && Object.keys(campaign.salesNavigatorCriteria).some(key => campaign.salesNavigatorCriteria[key]);
+    
+    if (socket && wsConnected) {
+      // Use WebSocket for real-time updates
+      const filters = {
+        searchType: hasSalesNavigator ? 'salesNavigator' : 'standard',
+        campaignId: campaign.id,
+        ...(hasSalesNavigator ? {
+          currentCompany: campaign.salesNavigatorCriteria?.company || campaign.salesNavigatorCriteria?.currentCompany || '',
+          companySize: campaign.salesNavigatorCriteria?.companyHeadcount || '',
+          jobTitle: campaign.salesNavigatorCriteria?.currentJobTitle || '',
+          location: campaign.salesNavigatorCriteria?.geography || '',
+          industry: campaign.salesNavigatorCriteria?.industry || ''
+        } : {
+          keywords: campaign.searchCriteria?.keywords || '',
+          location: campaign.searchCriteria?.location || '',
+          company: campaign.searchCriteria?.currentCompany || '',
+          title: campaign.searchCriteria?.title || ''
+        }),
+        maxResults: 25
+      };
+      
+      console.log('WebSocket search filters:', filters);
+      emit('search', { filters });
+    } else {
+      // Fallback to API
+      runWithAPI();
+    }
+    
+    function runWithAPI() {
+      setActionLoading(true);
+      setError('🎯 Starting campaign search...');
+      
+      fetch(`/api/campaigns/${campaign.id}/search-prospects`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          setError(`✅ Campaign completed! Found ${data.prospectsFound || 0} prospects.`);
+          fetchCampaigns();
+        } else {
+          setError(`❌ ${data.error || 'Failed to run campaign'}`);
+        }
+      })
+      .catch(err => {
+        console.error('API Error:', err);
+        setError('❌ Failed to run campaign');
+      })
+      .finally(() => setActionLoading(false));
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
@@ -378,14 +734,29 @@ const CampaignsPage: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Error Message */}
+        {/* Status Messages */}
+        {searchLoading && searchStatus && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            {searchStatus}
+          </div>
+        )}
+        
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
+          <div className={`border px-4 py-3 rounded-lg flex items-center gap-2 ${
+            error.startsWith('✅') ? 'bg-green-50 border-green-200 text-green-700' :
+            error.startsWith('⚠️') ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+            error.startsWith('🎯') || error.startsWith('⏳') ? 'bg-blue-50 border-blue-200 text-blue-700' :
+            'bg-red-50 border-red-200 text-red-700'
+          }`}>
+            {error.startsWith('✅') ? <CheckCircle className="w-5 h-5" /> :
+             error.startsWith('⚠️') ? <AlertCircle className="w-5 h-5" /> :
+             error.startsWith('🎯') || error.startsWith('⏳') ? <Loader2 className="w-5 h-5 animate-spin" /> :
+             <AlertCircle className="w-5 h-5" />}
             {error}
             <button
               onClick={() => setError('')}
-              className="ml-auto text-red-500 hover:text-red-700"
+              className="ml-auto hover:opacity-70"
             >
               <X className="w-4 h-4" />
             </button>
@@ -473,7 +844,7 @@ const CampaignsPage: React.FC = () => {
           ) : (
             <div className="divide-y divide-gray-200">
               {filteredCampaigns.map((campaign) => (
-                <div key={campaign._id} className="p-6 hover:bg-gray-50">
+                <div key={campaign.id} className="p-6 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1">
                       <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -486,6 +857,11 @@ const CampaignsPage: React.FC = () => {
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
                             {campaign.status}
                           </span>
+                          {campaign.salesNavigatorCriteria && Object.keys(campaign.salesNavigatorCriteria).some(key => campaign.salesNavigatorCriteria[key]) && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Sales Navigator
+                            </span>
+                          )}
                         </div>
                         
                         {campaign.description && (
@@ -511,13 +887,21 @@ const CampaignsPage: React.FC = () => {
                     
                     <div className="flex items-center gap-2 ml-4">
                       <button
-                        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
-                        title="View Details"
+                        onClick={() => handleRunCampaign(campaign)}
+                        disabled={actionLoading || searchLoading}
+                        className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 flex items-center"
+                        title="Run Campaign"
                       >
-                        <Eye className="h-4 w-4" />
+                        {searchLoading ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Play className="h-3 w-3 mr-1" />
+                        )}
+                        {searchLoading ? 'Running...' : 'Run'}
                       </button>
                       
                       <button
+                        onClick={() => handleEditCampaign(campaign)}
                         className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
                         title="Edit Campaign"
                       >
@@ -525,6 +909,10 @@ const CampaignsPage: React.FC = () => {
                       </button>
                       
                       <button
+                        onClick={() => {
+                          setSelectedCampaign(campaign);
+                          setShowDeleteModal(true);
+                        }}
                         className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md"
                         title="Delete Campaign"
                       >
@@ -537,6 +925,253 @@ const CampaignsPage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Edit Campaign Modal */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Edit Campaign</h3>
+                  <button
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedCampaign(null);
+                      resetFormData();
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedCampaign(null);
+                      resetFormData();
+                    }}
+                    disabled={actionLoading}
+                    className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateCampaign}
+                    disabled={actionLoading || !formData.name}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {actionLoading ? 'Updating...' : 'Update Campaign'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Campaign Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3 text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mt-2">Delete Campaign</h3>
+                <div className="mt-2 px-7 py-3">
+                  <p className="text-sm text-gray-500">
+                    Are you sure you want to delete "{selectedCampaign?.name}"? This action cannot be undone.
+                  </p>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setSelectedCampaign(null);
+                    }}
+                    disabled={actionLoading}
+                    className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteCampaign}
+                    disabled={actionLoading}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {actionLoading ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Message Modal - Higher z-index to appear above prospects modal */}
+        {showMessageModal && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full z-[60]">
+            <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Message for {selectedProspect?.name}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowMessageModal(false);
+                      setSelectedProspect(null);
+                      setGeneratedMessage('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                {messageLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Generating message...</span>
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      value={generatedMessage}
+                      onChange={(e) => setGeneratedMessage(e.target.value)}
+                      className="w-full h-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Generated message will appear here..."
+                    />
+                    
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        onClick={() => {
+                          setShowMessageModal(false);
+                          setSelectedProspect(null);
+                          setGeneratedMessage('');
+                        }}
+                        className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleSendMessage()}
+                        disabled={!generatedMessage}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        Send Message
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search Results Modal */}
+        {showResultsModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" style={{ display: showMessageModal ? 'block' : 'block' }}>
+            <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Search Results ({searchResults.length} prospects found)
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowResultsModal(false);
+                      setSearchResults([]);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="max-h-96 overflow-y-auto">
+                  <div className="space-y-3">
+                    {searchResults.map((prospect, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{prospect.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{prospect.title}</p>
+                            {prospect.company && (
+                              <p className="text-sm text-gray-500 mt-1">{prospect.company}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedProspect(prospect);
+                                handleGenerateMessage(prospect);
+                              }}
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center"
+                            >
+                              <MessageSquare className="h-3 w-3 mr-1" />
+                              Generate Message
+                            </button>
+                            {prospect.profileUrl && (
+                              <a
+                                href={prospect.profileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
+                                title="View LinkedIn Profile"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowResultsModal(false);
+                      setSearchResults([]);
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => window.location.href = '/prospects'}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    View All Prospects
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create Campaign Modal */}
         {showCreateModal && (

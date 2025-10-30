@@ -27,6 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('email', email.toLowerCase())
       .single();
+
+      console.log(`user ${JSON.stringify(user)}`)
     
     if (findError && findError.code !== 'PGRST116') {
       console.error('Database error during login:', findError);
@@ -59,6 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error: 'Incorrect password. Please try again or use "Forgot your password?" to reset it.' 
       });
     }
+
+    console.log(`isValidPassword ${isValidPassword}`)
 
     // Update last login
     await supabase

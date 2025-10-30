@@ -573,7 +573,7 @@ export const userOperations = {
 // Campaign operations
 export const campaignOperations = {
   async create(campaignData: Omit<Campaign, 'id' | 'created_at' | 'updated_at'>) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('campaigns')
       .insert([campaignData])
@@ -585,7 +585,7 @@ export const campaignOperations = {
   },
 
   async findByUserId(userId: string) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')
@@ -610,7 +610,7 @@ export const campaignOperations = {
   },
 
   async update(id: string, userId: string, updates: Partial<Campaign>) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('campaigns')
       .update(updates)
@@ -624,7 +624,7 @@ export const campaignOperations = {
   },
 
   async delete(id: string, userId: string) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { error } = await supabase
       .from('campaigns')
       .delete()
