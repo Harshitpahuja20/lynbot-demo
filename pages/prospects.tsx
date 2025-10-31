@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 interface Campaign {
-  _id: string;
+  id: string;
   name: string;
 }
 
@@ -62,10 +62,12 @@ interface Prospect {
 
 const ProspectsPage: React.FC = () => {
   const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | string>('all');
   const [filterCampaign, setFilterCampaign] = useState<'all' | string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -97,23 +99,70 @@ const ProspectsPage: React.FC = () => {
     }
   });
 
+  // Helper to map API prospect (snake_case) to UI Prospect (camelCase) shape
+  const mapProspect = (p: any): Prospect => {
+    const campaignObj = p.campaigns || (p.campaign_id ? { id: p.campaign_id, name: '' } : { id: '', name: '' });
+
+    return {
+      _id: p.id,
+      campaignId: { id: campaignObj.id, name: campaignObj.name },
+      linkedinData: {
+        profileUrl: p.linkedin_data?.profileUrl || p.linkedinData?.profileUrl || '',
+        name: p.linkedin_data?.name || p.linkedinData?.name || '',
+        firstName: p.linkedin_data?.firstName || p.linkedinData?.firstName,
+        lastName: p.linkedin_data?.lastName || p.linkedinData?.lastName,
+        headline: p.linkedin_data?.headline || p.linkedinData?.headline || '',
+        title: p.linkedin_data?.title || p.linkedinData?.title || '',
+        company: p.linkedin_data?.company || p.linkedinData?.company || '',
+        location: p.linkedin_data?.location || p.linkedinData?.location || '',
+        industry: p.linkedin_data?.industry || p.linkedinData?.industry || '',
+        connectionLevel: p.linkedin_data?.connectionLevel || p.linkedinData?.connectionLevel || '',
+        profileImageUrl: p.linkedin_data?.profileImageUrl || p.linkedinData?.profileImageUrl || '',
+        summary: p.linkedin_data?.summary || p.linkedinData?.summary || ''
+      },
+      contactInfo: p.contact_info || p.contactInfo || {},
+      status: p.status || 'new',
+      scoring: p.scoring || {},
+      interactions: p.interactions || [],
+      tags: p.tags || [],
+      notes: p.notes || [],
+      source: p.source || '',
+      createdAt: p.created_at || p.createdAt || '',
+      lastUpdated: p.last_updated || p.lastUpdated || ''
+    } as Prospect;
+  };
+
+  // Debounce search term
   useEffect(() => {
-    fetchProspects();
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    fetchProspects(pagination.page, pagination.limit, debouncedSearch, filterStatus, filterCampaign);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.page, pagination.limit, debouncedSearch, filterStatus, filterCampaign]);
+
+  useEffect(() => {
     fetchCampaigns();
   }, []);
 
-  const fetchProspects = async () => {
+  const fetchProspects = async (page = 1, limit = 20, search = '', status = 'all', campaignId = 'all') => {
     try {
       setLoading(true);
       setError('');
-      
-      const response = await fetch('/api/prospects', {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (search) params.append('search', search);
+      if (status && status !== 'all') params.append('status', status);
+      if (campaignId && campaignId !== 'all') params.append('campaignId', campaignId);
+      const response = await fetch(`/api/prospects?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
-
       if (!response.ok) {
         if (response.status === 401) {
           window.location.href = '/signin';
@@ -121,10 +170,17 @@ const ProspectsPage: React.FC = () => {
         }
         throw new Error('Failed to fetch prospects');
       }
-
       const data = await response.json();
       if (data.success) {
-        setProspects(data.prospects || []);
+        setProspects((data.prospects || []).map(mapProspect));
+        if (data.pagination) {
+          setPagination({
+            page: data.pagination.page,
+            limit: data.pagination.limit,
+            total: data.pagination.total,
+            pages: data.pagination.pages
+          });
+        }
       } else {
         throw new Error(data.error || 'Failed to fetch prospects');
       }
@@ -157,7 +213,7 @@ const ProspectsPage: React.FC = () => {
   };
 
   const handleCreateProspect = async () => {
-    if (!formData.campaignId || !formData.linkedinData.profileUrl || !formData.linkedinData.name) {
+    if (!formData.campaignId || !formData.linkedinData?.profileUrl || !formData.linkedinData?.name) {
       setError('Campaign, LinkedIn profile URL, and name are required');
       return;
     }
@@ -180,7 +236,8 @@ const ProspectsPage: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        setProspects(prev => [data.prospect, ...prev]);
+        // API returns snake_case; map before adding to state
+        setProspects(prev => [mapProspect(data.prospect), ...prev]);
         setShowCreateModal(false);
         resetFormData();
         setError('');
@@ -195,7 +252,7 @@ const ProspectsPage: React.FC = () => {
   };
 
   const handleEditProspect = async () => {
-    if (!selectedProspect || !formData.linkedinData.name) {
+    if (!selectedProspect || !formData.linkedinData?.name) {
       setError('Name is required');
       return;
     }
@@ -221,8 +278,9 @@ const ProspectsPage: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
+        // Map updated prospect returned by API
         setProspects(prev => prev.map(p => 
-          p._id === selectedProspect._id ? data.prospect : p
+          p._id === selectedProspect._id ? mapProspect(data.prospect) : p
         ));
         setShowEditModal(false);
         setSelectedProspect(null);
@@ -291,17 +349,17 @@ const ProspectsPage: React.FC = () => {
   const openEditModal = (prospect: Prospect) => {
     setSelectedProspect(prospect);
     setFormData({
-      campaignId: prospect.campaignId._id,
+      campaignId: prospect.campaignId.id,
       linkedinData: {
-        profileUrl: prospect.linkedinData.profileUrl,
-        name: prospect.linkedinData.name,
-        headline: prospect.linkedinData.headline || '',
-        title: prospect.linkedinData.title || '',
-        company: prospect.linkedinData.company || '',
-        location: prospect.linkedinData.location || '',
-        industry: prospect.linkedinData.industry || '',
-        connectionLevel: prospect.linkedinData.connectionLevel || '3rd',
-        summary: prospect.linkedinData.summary || ''
+        profileUrl: prospect.linkedinData?.profileUrl,
+        name: prospect.linkedinData?.name,
+        headline: prospect.linkedinData?.headline || '',
+        title: prospect.linkedinData?.title || '',
+        company: prospect.linkedinData?.company || '',
+        location: prospect.linkedinData?.location || '',
+        industry: prospect.linkedinData?.industry || '',
+        connectionLevel: prospect.linkedinData?.connectionLevel || '3rd',
+        summary: prospect.linkedinData?.summary || ''
       },
       contactInfo: {
         email: prospect.contactInfo?.email || '',
@@ -339,27 +397,10 @@ const ProspectsPage: React.FC = () => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const filteredProspects = prospects.filter(prospect => {
-    const matchesSearch = prospect.linkedinData.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (prospect.linkedinData.company && prospect.linkedinData.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (prospect.linkedinData.title && prospect.linkedinData.title.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = filterStatus === 'all' || prospect.status === filterStatus;
-    const matchesCampaign = filterCampaign === 'all' || prospect.campaignId._id === filterCampaign;
-    
-    return matchesSearch && matchesStatus && matchesCampaign;
-  });
+  // No client-side filtering for status/campaign, all handled by API
+  const filteredProspects = prospects;
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-600">Loading prospects...</span>
-        </div>
-      </Layout>
-    );
-  }
+
 
   return (
     <Layout>
@@ -439,7 +480,7 @@ const ProspectsPage: React.FC = () => {
               >
                 <option value="all">All Campaigns</option>
                 {campaigns.map(campaign => (
-                  <option key={campaign._id} value={campaign._id}>{campaign.name}</option>
+                  <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
                 ))}
               </select>
             </div>
@@ -447,14 +488,20 @@ const ProspectsPage: React.FC = () => {
         </div>
 
         {/* Prospects List */}
-        <div className="bg-white rounded-lg shadow-sm">
+        <div className="bg-white rounded-lg shadow-sm relative">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
-              Your Prospects ({filteredProspects.length})
+              Your Prospects (Page {pagination.page} of {pagination.pages}, Total: {pagination.total})
             </h3>
           </div>
-          
-          {filteredProspects.length === 0 ? (
+          {/* Loading overlay for table only */}
+          {loading && (
+            <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-10">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600">Loading prospects...</span>
+            </div>
+          )}
+          {!loading && filteredProspects.length === 0 ? (
             <div className="p-12 text-center">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -478,103 +525,121 @@ const ProspectsPage: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {filteredProspects.map((prospect) => (
-                <div key={prospect._id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 flex-1">
-                      {/* Profile Image or Placeholder */}
-                      <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center">
-                        {prospect.linkedinData.profileImageUrl ? (
-                          <img 
-                            src={prospect.linkedinData.profileImageUrl} 
-                            alt={prospect.linkedinData.name}
-                            className="h-12 w-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <Users className="h-6 w-6 text-gray-400" />
-                        )}
+          ) : null}
+          {!loading && filteredProspects.length > 0 && (
+            <>
+              <div className="divide-y divide-gray-200">
+                {filteredProspects.map((prospect) => (
+                  <div key={prospect._id} className="p-6 hover:bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 flex-1">
+                        {/* Profile Image or Placeholder */}
+                        <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center">
+                          {prospect.linkedinData?.profileImageUrl ? (
+                            <img 
+                              src={prospect.linkedinData?.profileImageUrl} 
+                              alt={prospect.linkedinData?.name}
+                              className="h-12 w-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <Users className="h-6 w-6 text-gray-400" />
+                          )}
+                        </div>
+                        {/* Prospect Info */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h4 className="text-lg font-medium text-gray-900">{prospect.linkedinData?.name}</h4>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(prospect.status)}`}>
+                              {formatStatus(prospect.status)}
+                            </span>
+                          </div>
+                          <div className="space-y-1 text-sm text-gray-600">
+                            {prospect.linkedinData?.title && (
+                              <div className="flex items-center">
+                                <Briefcase className="h-4 w-4 mr-1" />
+                                {prospect.linkedinData?.title}
+                              </div>
+                            )}
+                            {prospect.linkedinData?.company && (
+                              <div className="flex items-center">
+                                <Building className="h-4 w-4 mr-1" />
+                                {prospect.linkedinData?.company}
+                              </div>
+                            )}
+                            {prospect.linkedinData?.location && (
+                              <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                {prospect.linkedinData?.location}
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-2 text-xs text-gray-500">
+                            Campaign: {prospect.campaignId.name} • Added {new Date(prospect.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
                       </div>
-                      
-                      {/* Prospect Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <h4 className="text-lg font-medium text-gray-900">{prospect.linkedinData.name}</h4>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(prospect.status)}`}>
-                            {formatStatus(prospect.status)}
-                          </span>
-                        </div>
-                        
-                        <div className="space-y-1 text-sm text-gray-600">
-                          {prospect.linkedinData.title && (
-                            <div className="flex items-center">
-                              <Briefcase className="h-4 w-4 mr-1" />
-                              {prospect.linkedinData.title}
-                            </div>
-                          )}
-                          {prospect.linkedinData.company && (
-                            <div className="flex items-center">
-                              <Building className="h-4 w-4 mr-1" />
-                              {prospect.linkedinData.company}
-                            </div>
-                          )}
-                          {prospect.linkedinData.location && (
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-1" />
-                              {prospect.linkedinData.location}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="mt-2 text-xs text-gray-500">
-                          Campaign: {prospect.campaignId.name} • Added {new Date(prospect.createdAt).toLocaleDateString()}
-                        </div>
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={() => openDetailsModal(prospect)}
+                          className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <a
+                          href={prospect.linkedinData?.profileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
+                          title="View LinkedIn Profile"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                        <button
+                          onClick={() => openEditModal(prospect)}
+                          disabled={actionLoading}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md disabled:opacity-50"
+                          title="Edit Prospect"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(prospect)}
+                          disabled={actionLoading}
+                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md disabled:opacity-50"
+                          title="Delete Prospect"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 ml-4">
-                      <button
-                        onClick={() => openDetailsModal(prospect)}
-                        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
-                        title="View Details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      
-                      <a
-                        href={prospect.linkedinData.profileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
-                        title="View LinkedIn Profile"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                      
-                      <button
-                        onClick={() => openEditModal(prospect)}
-                        disabled={actionLoading}
-                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md disabled:opacity-50"
-                        title="Edit Prospect"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      
-                      <button
-                        onClick={() => openDeleteModal(prospect)}
-                        disabled={actionLoading}
-                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md disabled:opacity-50"
-                        title="Delete Prospect"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
                     </div>
                   </div>
+                ))}
+              </div>
+              {/* Pagination Controls */}
+              <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200">
+                <div className="text-sm text-gray-600">
+                  Showing page {pagination.page} of {pagination.pages} (Total: {pagination.total})
                 </div>
-              ))}
-            </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
+                    disabled={pagination.page === 1}
+                    className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setPagination(p => ({ ...p, page: Math.min(p.pages, p.page + 1) }))}
+                    disabled={pagination.page === pagination.pages}
+                    className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -620,12 +685,14 @@ const ProspectsPage: React.FC = () => {
                   </label>
                   <select
                     value={formData.campaignId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, campaignId: e.target.value }))}
+                    onChange={(e) => {
+                      console.log(e.target.value)
+                      setFormData(prev => ({ ...prev, campaignId: e.target.value }))}}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select a campaign</option>
                     {campaigns.map(campaign => (
-                      <option key={campaign._id} value={campaign._id}>{campaign.name}</option>
+                      <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
                     ))}
                   </select>
                 </div>
@@ -641,7 +708,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="url"
-                        value={formData.linkedinData.profileUrl}
+                        value={formData.linkedinData?.profileUrl}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, profileUrl: e.target.value }
@@ -657,7 +724,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.name}
+                        value={formData.linkedinData?.name}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, name: e.target.value }
@@ -673,7 +740,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.title}
+                        value={formData.linkedinData?.title}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, title: e.target.value }
@@ -689,7 +756,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.company}
+                        value={formData.linkedinData?.company}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, company: e.target.value }
@@ -705,7 +772,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.location}
+                        value={formData.linkedinData?.location}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, location: e.target.value }
@@ -771,7 +838,7 @@ const ProspectsPage: React.FC = () => {
                 </button>
                 <button
                   onClick={handleCreateProspect}
-                  disabled={actionLoading || !formData.campaignId || !formData.linkedinData.profileUrl || !formData.linkedinData.name}
+                  disabled={actionLoading || !formData.campaignId || !formData.linkedinData?.profileUrl || !formData.linkedinData?.name}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {actionLoading ? (
@@ -824,7 +891,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="url"
-                        value={formData.linkedinData.profileUrl}
+                        value={formData.linkedinData?.profileUrl}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, profileUrl: e.target.value }
@@ -840,7 +907,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.name}
+                        value={formData.linkedinData?.name}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, name: e.target.value }
@@ -855,7 +922,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.title}
+                        value={formData.linkedinData?.title}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, title: e.target.value }
@@ -870,7 +937,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.company}
+                        value={formData.linkedinData?.company}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, company: e.target.value }
@@ -885,7 +952,7 @@ const ProspectsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.linkedinData.location}
+                        value={formData.linkedinData?.location}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
                           linkedinData: { ...prev.linkedinData, location: e.target.value }
@@ -949,7 +1016,7 @@ const ProspectsPage: React.FC = () => {
                 </button>
                 <button
                   onClick={handleEditProspect}
-                  disabled={actionLoading || !formData.linkedinData.name}
+                  disabled={actionLoading || !formData.linkedinData?.name}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {actionLoading ? (
@@ -981,7 +1048,7 @@ const ProspectsPage: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mt-4">Delete Prospect</h3>
               <div className="mt-2 px-7 py-3">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to delete <strong>{selectedProspect.linkedinData.name}</strong>? 
+                  Are you sure you want to delete <strong>{selectedProspect.linkedinData?.name}</strong>? 
                   This action cannot be undone and will remove all associated data.
                 </p>
               </div>
@@ -1037,10 +1104,10 @@ const ProspectsPage: React.FC = () => {
                 {/* Basic Info */}
                 <div className="flex items-center space-x-4">
                   <div className="h-16 w-16 bg-gray-200 rounded-full flex items-center justify-center">
-                    {selectedProspect.linkedinData.profileImageUrl ? (
+                    {selectedProspect.linkedinData?.profileImageUrl ? (
                       <img 
-                        src={selectedProspect.linkedinData.profileImageUrl} 
-                        alt={selectedProspect.linkedinData.name}
+                        src={selectedProspect.linkedinData?.profileImageUrl} 
+                        alt={selectedProspect.linkedinData?.name}
                         className="h-16 w-16 rounded-full object-cover"
                       />
                     ) : (
@@ -1048,9 +1115,9 @@ const ProspectsPage: React.FC = () => {
                     )}
                   </div>
                   <div>
-                    <h4 className="text-xl font-semibold text-gray-900">{selectedProspect.linkedinData.name}</h4>
-                    {selectedProspect.linkedinData.headline && (
-                      <p className="text-gray-600">{selectedProspect.linkedinData.headline}</p>
+                    <h4 className="text-xl font-semibold text-gray-900">{selectedProspect.linkedinData?.name}</h4>
+                    {selectedProspect.linkedinData?.headline && (
+                      <p className="text-gray-600">{selectedProspect.linkedinData?.headline}</p>
                     )}
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${getStatusColor(selectedProspect.status)}`}>
                       {formatStatus(selectedProspect.status)}
@@ -1063,22 +1130,22 @@ const ProspectsPage: React.FC = () => {
                   <div>
                     <h5 className="text-sm font-medium text-gray-900 mb-2">Professional Information</h5>
                     <div className="space-y-2 text-sm">
-                      {selectedProspect.linkedinData.title && (
+                      {selectedProspect.linkedinData?.title && (
                         <div className="flex items-center">
                           <Briefcase className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>{selectedProspect.linkedinData.title}</span>
+                          <span>{selectedProspect.linkedinData?.title}</span>
                         </div>
                       )}
-                      {selectedProspect.linkedinData.company && (
+                      {selectedProspect.linkedinData?.company && (
                         <div className="flex items-center">
                           <Building className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>{selectedProspect.linkedinData.company}</span>
+                          <span>{selectedProspect.linkedinData?.company}</span>
                         </div>
                       )}
-                      {selectedProspect.linkedinData.location && (
+                      {selectedProspect.linkedinData?.location && (
                         <div className="flex items-center">
                           <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>{selectedProspect.linkedinData.location}</span>
+                          <span>{selectedProspect.linkedinData?.location}</span>
                         </div>
                       )}
                     </div>
@@ -1100,7 +1167,7 @@ const ProspectsPage: React.FC = () => {
                       <div>
                         <span className="text-gray-500">LinkedIn:</span>{' '}
                         <a 
-                          href={selectedProspect.linkedinData.profileUrl} 
+                          href={selectedProspect.linkedinData?.profileUrl} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800"
@@ -1123,10 +1190,10 @@ const ProspectsPage: React.FC = () => {
                 </div>
 
                 {/* Summary */}
-                {selectedProspect.linkedinData.summary && (
+                {selectedProspect.linkedinData?.summary && (
                   <div>
                     <h5 className="text-sm font-medium text-gray-900 mb-2">Summary</h5>
-                    <p className="text-sm text-gray-600">{selectedProspect.linkedinData.summary}</p>
+                    <p className="text-sm text-gray-600">{selectedProspect.linkedinData?.summary}</p>
                   </div>
                 )}
               </div>
