@@ -22,14 +22,13 @@ interface WebSocketProviderProps {
 }
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
-  const url = ((globalThis as any).process?.env?.NEXT_PUBLIC_BASE_URL) || "http://localhost:4000";
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     
-    const newSocket = io(url, {
+    const newSocket = io('http://localhost:4000', {
       auth: {
         token: token || null
       }

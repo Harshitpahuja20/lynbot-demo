@@ -370,9 +370,9 @@ const MessagesPage: React.FC = () => {
   const filteredConversations = conversations.filter(conversation => {
     const platformMatch = activePlatform === 'all' || conversation.platform === activePlatform;
     const searchMatch = 
-      conversation.prospect.linkedinData.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (conversation.prospect.linkedinData.company && 
-         conversation.prospect.linkedinData.company.toLowerCase().includes(searchTerm.toLowerCase()));
+      conversation.prospect.linkedinData?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (conversation.prospect.linkedinData?.company && 
+         conversation.prospect.linkedinData?.company.toLowerCase().includes(searchTerm.toLowerCase()));
     
     return platformMatch && searchMatch;
   });
@@ -513,10 +513,10 @@ const MessagesPage: React.FC = () => {
                       <div className="flex items-center space-x-3">
                         {/* Profile Image */}
                         <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                          {conversation.prospect.linkedinData.profileImageUrl ? (
+                          {conversation.prospect.linkedinData?.profileImageUrl ? (
                             <img 
-                              src={conversation.prospect.linkedinData.profileImageUrl} 
-                              alt={conversation.prospect.linkedinData.name}
+                              src={conversation.prospect.linkedinData?.profileImageUrl} 
+                              alt={conversation.prospect.linkedinData?.name}
                               className="h-10 w-10 rounded-full object-cover"
                             />
                           ) : (
@@ -528,7 +528,7 @@ const MessagesPage: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium text-gray-900 truncate">
-                              {conversation.prospect.linkedinData.name}
+                              {conversation.prospect.linkedinData?.name}
                             </p>
                             <div className="flex items-center space-x-1">
                               {/* Platform Indicator */}
@@ -554,9 +554,9 @@ const MessagesPage: React.FC = () => {
                             </div>
                           </div>
                           
-                          {conversation.prospect.linkedinData.company && (
+                          {conversation.prospect.linkedinData?.company && (
                             <p className="text-xs text-gray-500 truncate">
-                              {conversation.prospect.linkedinData.company}
+                              {conversation.prospect.linkedinData?.company}
                             </p>
                           )}
                           
@@ -596,10 +596,10 @@ const MessagesPage: React.FC = () => {
                       </button>
                       
                       <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        {selectedConversation.prospect.linkedinData.profileImageUrl ? (
+                        {selectedConversation.prospect.linkedinData?.profileImageUrl ? (
                           <img 
-                            src={selectedConversation.prospect.linkedinData.profileImageUrl} 
-                            alt={selectedConversation.prospect.linkedinData.name}
+                            src={selectedConversation.prospect.linkedinData?.profileImageUrl} 
+                            alt={selectedConversation.prospect.linkedinData?.name}
                             className="h-10 w-10 rounded-full object-cover"
                           />
                         ) : (
@@ -609,7 +609,7 @@ const MessagesPage: React.FC = () => {
                       
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">
-                          {selectedConversation.prospect.linkedinData.name}
+                          {selectedConversation.prospect.linkedinData?.name}
                         </h3>
                         <div className="flex items-center space-x-2">
                           <div className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -619,9 +619,9 @@ const MessagesPage: React.FC = () => {
                           }`}>
                             {selectedConversation.platform === 'email' ? 'Email' : 'LinkedIn'}
                           </div>
-                          {selectedConversation.prospect.linkedinData.company && (
+                          {selectedConversation.prospect.linkedinData?.company && (
                             <p className="text-sm text-gray-500">
-                              {selectedConversation.prospect.linkedinData.company}
+                              {selectedConversation.prospect.linkedinData?.company}
                             </p>
                           )}
                         </div>
@@ -634,9 +634,9 @@ const MessagesPage: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center space-x-2">
-                      {selectedConversation.prospect.linkedinData.profileUrl && (
+                      {selectedConversation.prospect.linkedinData?.profileUrl && (
                         <a
-                          href={selectedConversation.prospect.linkedinData.profileUrl}
+                          href={selectedConversation.prospect.linkedinData?.profileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
