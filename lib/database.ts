@@ -597,13 +597,16 @@ export const campaignOperations = {
   },
 
   async findById(id: string, userId: string) {
-    const supabase = getSupabaseClient()
+    console.log(id , userId)
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')
       .eq('id', id)
       .eq('user_id', userId)
       .single()
+
+      console.log(`data ${JSON.stringify(data)}`)
     
     if (error && error.code !== 'PGRST116') throw error
     return data
@@ -638,7 +641,7 @@ export const campaignOperations = {
 // Prospect operations
 export const prospectOperations = {
   async create(prospectData: Omit<Prospect, 'id' | 'created_at' | 'updated_at'>) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('prospects')
       .insert([prospectData])
@@ -656,13 +659,10 @@ export const prospectOperations = {
     status?: string
     campaignId?: string
   }) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     let query = supabase
       .from('prospects')
-      .select(`
-        *,
-        campaigns!inner(id, name)
-      `)
+      .select(`*,campaigns!inner(id, name)`, { count: 'exact' })
       .eq('user_id', userId)
 
     if (options?.search) {
@@ -685,14 +685,13 @@ export const prospectOperations = {
       query = query.range(from, to)
     }
 
-    const { data, error } = await query
-    
+    const { data, error, count } = await query
     if (error) throw error
-    return data || []
+    return { items: data || [], total: count ?? (data ? data.length : 0) }
   },
 
   async findById(id: string, userId: string) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('prospects')
       .select(`
@@ -708,7 +707,7 @@ export const prospectOperations = {
   },
 
   async update(id: string, userId: string, updates: Partial<Prospect>) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('prospects')
       .update({ ...updates, last_updated: new Date().toISOString() })
@@ -725,7 +724,7 @@ export const prospectOperations = {
   },
 
   async delete(id: string, userId: string) {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     const { error } = await supabase
       .from('prospects')
       .delete()

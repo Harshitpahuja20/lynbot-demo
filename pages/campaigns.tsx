@@ -135,6 +135,8 @@ const CampaignsPage: React.FC = () => {
   const [userLinkedInAccounts, setUserLinkedInAccounts] = useState<any[]>([]);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedResultUrls, setSelectedResultUrls] = useState<string[]>([]);
+  const [savingResults, setSavingResults] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<any>(null);
   const [generatedMessage, setGeneratedMessage] = useState('');
@@ -324,6 +326,72 @@ const CampaignsPage: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Failed to fetch campaigns');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleSelectResult = (profileUrl: string) => {
+    setSelectedResultUrls(prev => {
+      if (prev.includes(profileUrl)) return prev.filter(u => u !== profileUrl);
+      return [...prev, profileUrl];
+    });
+  };
+
+  // Save prospects by profileUrl list. If urls is omitted, save ALL searchResults.
+  const handleSaveProspects = async (urls?: string[]) => {
+    const toSaveUrls = urls && urls.length ? urls : searchResults.map((p: any) => p.profileUrl).filter(Boolean);
+
+    if (!toSaveUrls.length) {
+      setError('Please select at least one prospect to save');
+      return;
+    }
+
+    setSavingResults(true);
+    setError('');
+    try {
+      const selectedProspects = searchResults.filter((p: any) => toSaveUrls.includes(p.profileUrl));
+
+      const token = localStorage.getItem('token');
+
+      // Prepare payload for bulk endpoint
+      const prospectsPayload = selectedProspects.map((p: any) => ({
+        campaignId: p?.campaignId || '',
+        linkedinData: {
+          profileUrl: p.profileUrl,
+          name: p.name,
+          title: p.title || '',
+          company: p.company || '',
+          location: p.location || '',
+          industry: p.industry || ''
+        },
+        contactInfo: {}
+      }));
+
+      const resp = await fetch('/api/prospects/bulk', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prospects: prospectsPayload })
+      });
+
+      const data = await resp.json().catch(() => ({ success: false }));
+
+      if (resp.ok && data && data.success) {
+        const successCount = data.count || (Array.isArray(data.prospects) ? data.prospects.length : selectedProspects.length);
+        setError(`✅ Saved ${successCount} prospect${successCount > 1 ? 's' : ''} successfully`);
+        // Remove saved ones from results and clear selection if they were selected
+        setSearchResults(prev => prev.filter((p: any) => !toSaveUrls.includes(p.profileUrl)));
+        setSelectedResultUrls([]);
+      } else {
+        console.error('Bulk save failed', data);
+        setError(data.error || '❌ Failed to save selected prospects');
+      }
+    } catch (err) {
+      console.error('Save prospects error', err);
+      setError('❌ Failed to save selected prospects');
+    } finally {
+      setSavingResults(false);
     }
   };
 
@@ -1115,14 +1183,25 @@ const CampaignsPage: React.FC = () => {
                     {searchResults.map((prospect, index) => (
                       <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
                         <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{prospect.name}</h4>
-                            <p className="text-sm text-gray-600 mt-1">{prospect.title}</p>
-                            {prospect.company && (
-                              <p className="text-sm text-gray-500 mt-1">{prospect.company}</p>
-                            )}
+                          <div className="flex-1 flex items-start gap-3">
+                            <label className="flex items-center mt-1">
+                              <input
+                                type="checkbox"
+                                checked={selectedResultUrls.includes(prospect.profileUrl)}
+                                onChange={() => toggleSelectResult(prospect.profileUrl)}
+                                className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                              />
+                            </label>
+
+                            <div>
+                              <h4 className="font-medium text-gray-900">{prospect.name}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{prospect.title}</p>
+                              {prospect.company && (
+                                <p className="text-sm text-gray-500 mt-1">{prospect.company}</p>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex gap-2">
+                          {/* <div className="flex gap-2">
                             <button
                               onClick={() => {
                                 setSelectedProspect(prospect);
@@ -1144,7 +1223,7 @@ const CampaignsPage: React.FC = () => {
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             )}
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     ))}
@@ -1156,22 +1235,25 @@ const CampaignsPage: React.FC = () => {
                     onClick={() => {
                       setShowResultsModal(false);
                       setSearchResults([]);
+                      setSelectedResultUrls([]);
                     }}
                     className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                   >
                     Close
                   </button>
                   <button
-                    onClick={() => window.location.href = '/prospects'}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    onClick={() => handleSaveProspects(selectedResultUrls.length === 0 ? undefined : selectedResultUrls)}
+                    disabled={savingResults || searchResults.length === 0}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                   >
-                    View All Prospects
+                    {savingResults ? 'Saving...' : (selectedResultUrls.length === 0 ? 'Save All' : 'Save Selected')}
                   </button>
                 </div>
               </div>
             </div>
           </div>
         )}
+        
 
         {/* Create Campaign Modal */}
         {showCreateModal && (

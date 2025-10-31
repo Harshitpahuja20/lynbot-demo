@@ -3,14 +3,8 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/onboarding": "pages/onboarding.js",
-  "/signin": "pages/signin.js",
-  "/api/auth/login": "pages/api/auth/login.js",
-  "/api/admin/analytics": "pages/api/admin/analytics.js",
-  "/admin/analytics": "pages/admin/analytics.js",
-  "/dashboard": "pages/dashboard.js",
-  "/api/user/dashboard-stats": "pages/api/user/dashboard-stats.js",
-  "/api/user/recent-activity": "pages/api/user/recent-activity.js",
+  "/campaigns": "pages/campaigns.js",
   "/api/campaigns": "pages/api/campaigns.js",
-  "/campaigns": "pages/campaigns.js"
+  "/api/campaigns/[id]/search-prospects": "pages/api/campaigns/[id]/search-prospects.js",
+  "/dashboard": "pages/dashboard.js"
 }
