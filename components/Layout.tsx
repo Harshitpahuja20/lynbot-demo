@@ -32,6 +32,7 @@ const Layout: React.FC<LayoutProps> = ({ children, error, onClearError }) => {
     // Check authentication on mount and route changes
     const checkAuth = () => {
       const currentUser = getCurrentUser();
+      console.log(`currentUser ${JSON.stringify(currentUser)}`)
       setUser(currentUser);
       setLoading(false);
       

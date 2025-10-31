@@ -22,11 +22,17 @@ async function handleGetCampaigns(req: AuthenticatedRequest, res: NextApiRespons
   try {
     const userId = req.user.id;
     
-    const campaigns = await campaignOperations.findByUserId(userId);
+    const [campaigns, user] = await Promise.all([
+      campaignOperations.findByUserId(userId),
+      userOperations.findById(userId)
+    ]);
 
     res.json({
       success: true,
-      campaigns
+      campaigns,
+      user: {
+        linkedin_accounts: user?.linkedin_accounts || []
+      }
     });
 
   } catch (error) {
@@ -60,6 +66,7 @@ async function handleCreateCampaign(req: AuthenticatedRequest, res: NextApiRespo
       user_id: userId,
       status: 'draft',
       search_criteria: req.body.searchCriteria || {},
+      salesnavigatorcriteria: req.body.salesNavigatorCriteria || {},
       message_templates: {
         connectionRequest: {
           enabled: true,

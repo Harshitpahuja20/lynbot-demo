@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const userId = decoded.id;
 
-    const { email, password } = req.body;
+    const { email, password, sessionToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -49,6 +49,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Encrypt the password
     const salt = await bcrypt.genSalt(12);
     const encryptedPassword = await bcrypt.hash(password, salt);
+    
+    // Store session token as-is for LinkedIn automation
+    // Note: In production, consider additional security measures
+    const rawSessionToken = sessionToken || null;
 
     // Find user and update LinkedIn account
     const supabase = getSupabaseAdminClient();
@@ -77,7 +81,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       updatedLinkedInAccounts[existingAccountIndex] = {
         ...updatedLinkedInAccounts[existingAccountIndex],
         encryptedPassword: encryptedPassword,
-        isActive: true
+        isActive: true,
+        sessionToken: rawSessionToken,
+        lastLogin: new Date().toISOString()
       };
     } else {
       // Add new LinkedIn account
@@ -85,6 +91,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         email: email,
         encryptedPassword: encryptedPassword,
         isActive: true,
+        sessionToken: rawSessionToken,
+        lastLogin: new Date().toISOString(),
         accountHealth: {
           status: 'healthy',
           lastCheck: new Date().toISOString(),
@@ -134,3 +142,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
 }
+
+export default handler;

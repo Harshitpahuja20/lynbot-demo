@@ -167,8 +167,8 @@ const SignInPage: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
           <div className="text-sm text-blue-700 space-y-1">
-            <p><strong>Demo User:</strong> demo@example.com / demo123456</p>
-            <p><strong>Admin:</strong> admin@lyncbot.com / LyncBot123!</p>
+            <p><strong>Demo User:</strong> demo@example.com / 12345678</p>
+            <p><strong>Admin:</strong> admin@lyncbot.com / 12345678</p>
           </div>
         </div>
 
