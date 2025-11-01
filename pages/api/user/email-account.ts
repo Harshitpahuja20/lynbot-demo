@@ -25,7 +25,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as any;
+    } catch (err) {
+      console.error('JWT verification failed', err);
+      return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+    }
     const userId = decoded.id;
 
     const { email, password, provider, smtpSettings, imapSettings } = req.body;
@@ -46,8 +52,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    // Validate provider
-    if (!['gmail', 'outlook', 'smtp'].includes(provider)) {
+    // Normalize/validate provider (default to 'smtp' if not provided)
+    const finalProvider = provider || 'smtp';
+    if (!['gmail', 'outlook', 'smtp'].includes(finalProvider)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid email provider'
@@ -61,6 +68,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       encryptedPassword = await bcrypt.hash(password, salt);
     }
 
+    // Ensure Supabase admin client env vars are present
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Supabase admin environment variables missing');
+      return res.status(500).json({ success: false, error: 'Supabase not configured on the server' });
+    }
+
     // Find user and update email accounts
     const supabase = getSupabaseAdminClient();
     const { data: user, error: userError } = await supabase
@@ -70,9 +83,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       .single();
 
     if (userError || !user) {
+      console.error('User lookup failed', userError);
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: (userError && (userError.message || userError)) || 'User not found'
       });
     }
 
@@ -87,8 +101,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Update existing account
       updatedEmailAccounts[existingAccountIndex] = {
         ...updatedEmailAccounts[existingAccountIndex],
-        ...(encryptedPassword && { encryptedPassword }),
-        provider,
+  ...(encryptedPassword && { encryptedPassword }),
+  provider: finalProvider,
         ...(smtpSettings && { smtpSettings }),
         ...(imapSettings && { imapSettings }),
         isActive: true,
@@ -99,7 +113,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       updatedEmailAccounts.push({
         email: email,
         encryptedPassword: encryptedPassword,
-        provider: provider,
+  provider: finalProvider,
         ...(smtpSettings && { smtpSettings }),
         ...(imapSettings && { imapSettings }),
         isActive: true,
@@ -123,7 +137,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { error: updateError } = await supabase
       .from('users')
       .update({
-      email_accounts: updatedEmailAccounts
+        email_accounts: updatedEmailAccounts
       })
       .eq('id', userId);
 
@@ -131,7 +145,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       console.error('Error updating user:', updateError);
       return res.status(500).json({
         success: false,
-        error: 'Failed to save email account'
+        error: updateError.message || 'Failed to save email account'
       });
     }
 

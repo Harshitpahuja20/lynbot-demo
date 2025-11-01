@@ -361,7 +361,10 @@ const CampaignsPage: React.FC = () => {
           title: p.title || '',
           company: p.company || '',
           location: p.location || '',
-          industry: p.industry || ''
+          industry: p.industry || '',
+          profileImageUrl: p.photoUrl || p.photoURL || '',
+          mutualsText: p.mutualsText || '',
+          memberUrn: p.memberUrn || p.memberUrnStr || ''
         },
         contactInfo: {}
       }));
@@ -1184,46 +1187,102 @@ const CampaignsPage: React.FC = () => {
                       <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
                         <div className="flex items-start justify-between">
                           <div className="flex-1 flex items-start gap-3">
-                            <label className="flex items-center mt-1">
+                            <label className="flex items-start mt-1">
                               <input
                                 type="checkbox"
-                                checked={selectedResultUrls.includes(prospect.profileUrl)}
-                                onChange={() => toggleSelectResult(prospect.profileUrl)}
-                                className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                                checked={selectedResultUrls.includes(prospect?.profileUrl)}
+                                onChange={() => toggleSelectResult(prospect?.profileUrl)}
+                                className="h-4 w-4 text-blue-600 rounded border-gray-300 mt-1"
                               />
                             </label>
 
-                            <div>
-                              <h4 className="font-medium text-gray-900">{prospect.name}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{prospect.title}</p>
-                              {prospect.company && (
-                                <p className="text-sm text-gray-500 mt-1">{prospect.company}</p>
-                              )}
+                            <div className="flex items-center gap-3">
+                              <div className="h-12 w-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
+                                {prospect?.photoUrl ? (
+                                  <img
+                                    src={prospect.photoUrl}
+                                    alt={prospect.name}
+                                    className="h-12 w-12 object-cover"
+                                  />
+                                ) : (
+                                  <Users className="h-8 w-8 text-gray-400 m-2" />
+                                )}
+                              </div>
+
+                              <div>
+                                <a
+                                  href={prospect?.profileUrl || '#'}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-gray-900 hover:underline"
+                                >
+                                  {prospect?.name || 'Unknown'}
+                                </a>
+                                <p className="text-sm text-gray-600 mt-1 max-w-xl">{prospect?.title || ''}</p>
+
+                                {/* Followers and mutuals line (compact) */}
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {(() => {
+                                    const followersRaw = prospect?.followers || prospect?.followerCount || prospect?.followersText;
+                                    let followersText = '';
+                                    try {
+                                      if (followersRaw) {
+                                        if (typeof followersRaw === 'number') {
+                                          followersText = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(followersRaw) + ' followers';
+                                        } else if (typeof followersRaw === 'string') {
+                                          // If string already contains 'followers' or 'follower', use as-is
+                                          if (/followers?|k|m|b/i.test(followersRaw) && !/followers?/i.test(followersRaw)) {
+                                            // e.g. '1K' -> append 'followers'
+                                            followersText = followersRaw + ' followers';
+                                          } else {
+                                            followersText = followersRaw;
+                                          }
+                                        }
+                                      }
+                                    } catch (e) {
+                                      followersText = '';
+                                    }
+
+                                    const mutuals = prospect?.mutualsText || '';
+
+                                    if (followersText && mutuals) {
+                                      return <span className="text-gray-500">{followersText} <span className="mx-2">•</span> <span className="text-gray-400">{mutuals}</span></span>;
+                                    }
+
+                                    if (followersText) return <span className="text-gray-500">{followersText}</span>;
+                                    if (mutuals) return <span className="text-gray-400">{mutuals}</span>;
+                                    return null;
+                                  })()}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                          {/* <div className="flex gap-2">
+
+                          <div className="flex gap-2">
                             <button
                               onClick={() => {
                                 setSelectedProspect(prospect);
                                 handleGenerateMessage(prospect);
                               }}
                               className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center"
+                              title="Generate Message"
                             >
                               <MessageSquare className="h-3 w-3 mr-1" />
-                              Generate Message
+                              Message
                             </button>
-                            {prospect.profileUrl && (
+
+                            {prospect?.profileUrl && (
                               <a
                                 href={prospect.profileUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
+                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md flex items-center"
                                 title="View LinkedIn Profile"
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             )}
-                          </div> */}
+                          </div>
                         </div>
                       </div>
                     ))}

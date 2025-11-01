@@ -335,6 +335,54 @@ const MessagesPage: React.FC = () => {
     fetchConversations(); // Refresh to update unread counts
   };
 
+  // Send email from the "Compose New Email" modal (ad-hoc email)
+  const handleSendModalEmail = async () => {
+    if (!emailTo.trim() || !emailSubject.trim() || !newMessage.trim()) {
+      setError('To, subject and message are required');
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      const response = await fetch('/api/messages/send-email', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: emailTo.trim(),
+          from: emailFrom || undefined,
+          subject: emailSubject.trim(),
+          content: newMessage.trim()
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      // Success — close modal and clear fields, refresh conversations
+      setShowNewEmailModal(false);
+      setEmailSubject('');
+      setEmailTo('');
+      setEmailFrom('');
+      setNewMessage('');
+      setError('');
+      // Refresh conversations/messages so the new email shows up if tied to a prospect
+      await fetchConversations();
+      if (selectedConversation) {
+        await fetchMessages(selectedConversation.conversationId);
+      }
+    } catch (err) {
+      console.error('Error sending new email from modal:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send email');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const getMessageStatusIcon = (message: Message) => {
     if (message.type === 'sent') {
       switch (message.status) {
@@ -915,15 +963,15 @@ const MessagesPage: React.FC = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      // Handle sending new email
-                      setShowNewEmailModal(false);
-                      // You would implement prospect selection here
-                    }}
-                    disabled={!emailTo.trim() || !emailSubject.trim() || !newMessage.trim()}
+                    onClick={handleSendModalEmail}
+                    disabled={sendingMessage || !emailTo.trim() || !emailSubject.trim() || !newMessage.trim()}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   >
-                    <Mail className="w-4 h-4 mr-2 inline" />
+                    {sendingMessage ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
+                    ) : (
+                      <Mail className="w-4 h-4 mr-2 inline" />
+                    )}
                     Send Email
                   </button>
                 </div>
