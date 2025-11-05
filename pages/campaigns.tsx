@@ -19,12 +19,12 @@ import {
   Users,
   MessageSquare,
   BarChart3,
-  Calendar,
-  Settings,
   ExternalLink,
   Copy,
-  MoreVertical
+  MoreVertical,
+  EyeIcon
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Campaign {
   id: string;
@@ -142,6 +142,7 @@ const CampaignsPage: React.FC = () => {
   const [generatedMessage, setGeneratedMessage] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
   const { socket, isConnected: wsConnected, emit } = useWebSocket();
+  const router = useRouter();
   
   // Form data for create/edit
   const [formData, setFormData] = useState({
@@ -232,13 +233,33 @@ const CampaignsPage: React.FC = () => {
       setSearchStatus(data.message || 'Processing...');
     };
 
-    const handleSearchComplete = (data: any) => {
+    const handleSearchComplete = async (data: any) => {
       setSearchLoading(false);
       setSearchStatus('');
       if (data.success) {
         setError(`✅ Search completed! Found ${data.prospectsFound || 0} prospects.`);
         setSearchResults(data.users || []);
         setShowResultsModal(true);
+        console.log(`data ${JSON.stringify(data)}`)
+        // Save search results to database
+        if (data.campaignId && data.users && data.users.length > 0) {
+          try {
+            await fetch('/api/campaigns/search-results', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                campaignId: data.campaignId,
+                results: data.users,
+                totalResults: data.users.length
+              })
+            });
+          } catch (err) {
+            console.error('Failed to save search results:', err);
+          }
+        }
       } else {
         setError(`❌ ${data.message || 'Search failed'}`);
       }
@@ -970,6 +991,15 @@ const CampaignsPage: React.FC = () => {
                         )}
                         {searchLoading ? 'Running...' : 'Run'}
                       </button>
+                      <button
+                        onClick={() => {
+                          router.push(`/campaign-result?id=${campaign.id}`)
+                        }}
+                        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+                        title="View Campaign"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                      </button>
                       
                       <button
                         onClick={() => handleEditCampaign(campaign)}
@@ -1016,25 +1046,142 @@ const CampaignsPage: React.FC = () => {
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name *</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name *</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <input
-                      type="text"
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+
+                  {!useSalesNavigator ? (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-md font-medium text-gray-900 mb-3">Standard Search Criteria</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
+                          <input type="text" value={formData.searchCriteria.keywords} onChange={(e) => setFormData(prev => ({ ...prev, searchCriteria: { ...prev.searchCriteria, keywords: e.target.value } }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., software engineer" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                          <input type="text" value={formData.searchCriteria.location} onChange={(e) => setFormData(prev => ({ ...prev, searchCriteria: { ...prev.searchCriteria, location: e.target.value } }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., San Francisco" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Current Company</label>
+                          <input type="text" value={formData.searchCriteria.currentCompany} onChange={(e) => setFormData(prev => ({ ...prev, searchCriteria: { ...prev.searchCriteria, currentCompany: e.target.value } }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Google" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                          <input type="text" value={formData.searchCriteria.title} onChange={(e) => setFormData(prev => ({ ...prev, searchCriteria: { ...prev.searchCriteria, title: e.target.value } }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., CEO" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                          <input type="text" value={formData.searchCriteria.industry} onChange={(e) => setFormData(prev => ({ ...prev, searchCriteria: { ...prev.searchCriteria, industry: e.target.value } }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Technology" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Connection Level</label>
+                          <select value={formData.searchCriteria.connectionLevel} onChange={(e) => setFormData(prev => ({ ...prev, searchCriteria: { ...prev.searchCriteria, connectionLevel: e.target.value } }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Any connection level</option>
+                            <option value="1st">1st connections</option>
+                            <option value="2nd">2nd connections</option>
+                            <option value="3rd">3rd+ connections</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 rounded-lg p-4 space-y-6">
+                      <h4 className="text-md font-medium text-gray-900">Sales Navigator Criteria</h4>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-3">Company</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Company</label><input type="text" value={formData.salesNavigatorCriteria.company} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, company: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Current Company</label><input type="text" value={formData.salesNavigatorCriteria.currentCompany} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, currentCompany: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Company Headcount</label><select value={formData.salesNavigatorCriteria.companyHeadcount} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, companyHeadcount: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any size</option><option value="1-10">1-10</option><option value="11-50">11-50</option><option value="51-200">51-200</option><option value="201-500">201-500</option><option value="501-1000">501-1,000</option><option value="1001-5000">1,001-5,000</option><option value="5001-10000">5,001-10,000</option><option value="10001+">10,001+</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Past Company</label><input type="text" value={formData.salesNavigatorCriteria.pastCompany} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, pastCompany: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Company Type</label><select value={formData.salesNavigatorCriteria.companyType} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, companyType: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any type</option><option value="public">Public Company</option><option value="private">Privately Held</option><option value="nonprofit">Non-profit</option><option value="government">Government Agency</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Company Headquarters</label><input type="text" value={formData.salesNavigatorCriteria.companyHeadquarters} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, companyHeadquarters: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-3">Role</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Function</label><select value={formData.salesNavigatorCriteria.function} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, function: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any function</option><option value="sales">Sales</option><option value="marketing">Marketing</option><option value="engineering">Engineering</option><option value="finance">Finance</option><option value="operations">Operations</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Current Job Title</label><input type="text" value={formData.salesNavigatorCriteria.currentJobTitle} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, currentJobTitle: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Seniority Level</label><select value={formData.salesNavigatorCriteria.seniorityLevel} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, seniorityLevel: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any level</option><option value="entry">Entry level</option><option value="mid-senior">Mid-Senior</option><option value="director">Director</option><option value="executive">Executive</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Past Job Title</label><input type="text" value={formData.salesNavigatorCriteria.pastJobTitle} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, pastJobTitle: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Years in Current Company</label><select value={formData.salesNavigatorCriteria.yearsInCurrentCompany} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, yearsInCurrentCompany: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any</option><option value="less-than-1">Less than 1 year</option><option value="1-2">1-2 years</option><option value="3-5">3-5 years</option><option value="6-10">6-10 years</option><option value="more-than-10">More than 10 years</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Years in Current Position</label><select value={formData.salesNavigatorCriteria.yearsInCurrentPosition} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, yearsInCurrentPosition: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any</option><option value="less-than-1">Less than 1 year</option><option value="1-2">1-2 years</option><option value="3-5">3-5 years</option><option value="6-10">6-10 years</option><option value="more-than-10">More than 10 years</option></select></div>
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-3">Personal</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Geography</label><input type="text" value={formData.salesNavigatorCriteria.geography} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, geography: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Industry</label><input type="text" value={formData.salesNavigatorCriteria.industry} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, industry: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">First Name</label><input type="text" value={formData.salesNavigatorCriteria.firstName} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, firstName: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label><input type="text" value={formData.salesNavigatorCriteria.lastName} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, lastName: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Profile Language</label><select value={formData.salesNavigatorCriteria.profileLanguage} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, profileLanguage: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any</option><option value="en">English</option><option value="es">Spanish</option><option value="fr">French</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Years of Experience</label><select value={formData.salesNavigatorCriteria.yearsOfExperience} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, yearsOfExperience: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any</option><option value="1-2">1-2 years</option><option value="3-5">3-5 years</option><option value="6-10">6-10 years</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Groups</label><input type="text" value={formData.salesNavigatorCriteria.groups} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, groups: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">School</label><input type="text" value={formData.salesNavigatorCriteria.school} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, school: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-3">Buyer Intent</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Category Interest</label><input type="text" value={formData.salesNavigatorCriteria.categoryInterest} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, categoryInterest: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div className="space-y-2">
+                            <label className="flex items-center"><input type="checkbox" checked={formData.salesNavigatorCriteria.followingYourCompany} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, followingYourCompany: e.target.checked } }))} className="rounded border-gray-300 text-blue-600" /><span className="ml-2 text-xs text-gray-700">Following your company</span></label>
+                            <label className="flex items-center"><input type="checkbox" checked={formData.salesNavigatorCriteria.viewedProfileRecently} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, viewedProfileRecently: e.target.checked } }))} className="rounded border-gray-300 text-blue-600" /><span className="ml-2 text-xs text-gray-700">Viewed profile recently</span></label>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-3">Best Path In</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Connection</label><select value={formData.salesNavigatorCriteria.connection} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, connection: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">Any</option><option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd+</option></select></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Connections Of</label><input type="text" value={formData.salesNavigatorCriteria.connectionsOf} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, connectionsOf: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div className="space-y-2">
+                            <label className="flex items-center"><input type="checkbox" checked={formData.salesNavigatorCriteria.pastColleague} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, pastColleague: e.target.checked } }))} className="rounded border-gray-300 text-blue-600" /><span className="ml-2 text-xs text-gray-700">Past colleague</span></label>
+                            <label className="flex items-center"><input type="checkbox" checked={formData.salesNavigatorCriteria.sharedExperiences} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, sharedExperiences: e.target.checked } }))} className="rounded border-gray-300 text-blue-600" /><span className="ml-2 text-xs text-gray-700">Shared experiences</span></label>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-3">Recent Updates</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <label className="flex items-center"><input type="checkbox" checked={formData.salesNavigatorCriteria.changedJobs} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, changedJobs: e.target.checked } }))} className="rounded border-gray-300 text-blue-600" /><span className="ml-2 text-xs text-gray-700">Changed jobs</span></label>
+                          <label className="flex items-center"><input type="checkbox" checked={formData.salesNavigatorCriteria.postedOnLinkedIn} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, postedOnLinkedIn: e.target.checked } }))} className="rounded border-gray-300 text-blue-600" /><span className="ml-2 text-xs text-gray-700">Posted on LinkedIn</span></label>
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-3">Workflow</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Persona</label><input type="text" value={formData.salesNavigatorCriteria.persona} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, persona: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Account Lists</label><input type="text" value={formData.salesNavigatorCriteria.accountLists} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, accountLists: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Lead Lists</label><input type="text" value={formData.salesNavigatorCriteria.leadLists} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, leadLists: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">People in CRM</label><input type="text" value={formData.salesNavigatorCriteria.peopleInCRM} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, peopleInCRM: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">People Interacted With</label><input type="text" value={formData.salesNavigatorCriteria.peopleInteractedWith} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, peopleInteractedWith: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-xs font-medium text-gray-700 mb-1">Saved Leads and Accounts</label><input type="text" value={formData.salesNavigatorCriteria.savedLeadsAccounts} onChange={(e) => setFormData(prev => ({ ...prev, salesNavigatorCriteria: { ...prev.salesNavigatorCriteria, savedLeadsAccounts: e.target.value } }))} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex gap-3 mt-6">

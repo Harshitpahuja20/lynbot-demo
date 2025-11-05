@@ -24,20 +24,15 @@ self.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/campaigns.js"
     ],
-    "/messages": [
+    "/dashboard": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/messages.js"
+      "static/chunks/pages/dashboard.js"
     ],
-    "/prospects": [
+    "/knowledge": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/prospects.js"
-    ],
-    "/signin": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/signin.js"
+      "static/chunks/pages/knowledge.js"
     ]
   },
   "ampFirstPages": []

@@ -1,7 +1,6 @@
 import { NextApiResponse } from 'next';
 import { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { getSupabaseAdminClient } from '../../../lib/supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -61,12 +60,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    // Encrypt the password if provided
-    let encryptedPassword;
-    if (password) {
-      const salt = await bcrypt.genSalt(12);
-      encryptedPassword = await bcrypt.hash(password, salt);
-    }
+    // Store password as plain text (for SMTP authentication)
+    const encryptedPassword = password || undefined;
 
     // Ensure Supabase admin client env vars are present
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -164,3 +159,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
 }
+
+export default handler;

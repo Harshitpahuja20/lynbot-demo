@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import { useWebSocket } from '../contexts/WebSocketContext';
 import { 
   MessageSquare, 
   Send, 
@@ -22,9 +23,16 @@ import {
 } from 'lucide-react';
 
 interface Prospect {
-  _id: string;
-  linkedinData: {
-    name: string;
+  _id?: string;
+  id?: string;
+  linkedinData?: {
+    name?: string;
+    profileImageUrl?: string;
+    company?: string;
+    profileUrl?: string;
+  };
+  linkedin_data?: {
+    name?: string;
     profileImageUrl?: string;
     company?: string;
     profileUrl?: string;
@@ -33,14 +41,23 @@ interface Prospect {
     email?: string;
     phone?: string;
   };
+  contact_info?: {
+    email?: string;
+    phone?: string;
+  };
 }
 
 interface Message {
-  _id: string;
-  prospectId: Prospect;
-  conversationId: string;
+  _id?: string;
+  id?: string;
+  prospectId?: Prospect;
+  prospect_id?: string;
+  prospects?: Prospect;
+  conversationId?: string;
+  conversation_id?: string;
   type: 'sent' | 'received';
-  messageType: string;
+  messageType?: string;
+  message_type?: string;
   content: string;
   subject?: string;
   platform: 'linkedin' | 'email';
@@ -51,16 +68,28 @@ interface Message {
     bcc?: string[];
     messageId?: string;
   };
+  email_data?: {
+    to: string;
+    from: string;
+    cc?: string[];
+    bcc?: string[];
+    messageId?: string;
+  };
   status: string;
   sentAt?: string;
+  sent_at?: string;
   readAt?: string;
-  createdAt: string;
+  read_at?: string;
+  createdAt?: string;
+  created_at?: string;
   automated: boolean;
 }
 
 interface Conversation {
-  conversationId: string;
-  prospect: Prospect;
+  conversationId?: string;
+  conversation_id?: string;
+  prospect?: Prospect;
+  prospects?: Prospect;
   platform: 'linkedin' | 'email';
   lastMessage: Message;
   unreadCount: number;
@@ -84,10 +113,147 @@ const MessagesPage: React.FC = () => {
   const [emailTo, setEmailTo] = useState('');
   const [emailFrom, setEmailFrom] = useState('');
   const [showNewEmailModal, setShowNewEmailModal] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'conversations' | 'sent'>('conversations');
+  const [sentEmails, setSentEmails] = useState<any[]>([]);
+  const [sentEmailsLoading, setSentEmailsLoading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('');
+  const hasAutoLoadedRef = React.useRef<{linkedin: boolean, email: boolean}>({linkedin: false, email: false});
+  const { socket, isConnected: wsConnected, emit } = useWebSocket();
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+    fetchEmailAccounts();
+    
+    if (socket) {
+      socket.on('searchStarted', (data) => {
+        setSyncStatus(data.message);
+      });
+      
+      socket.on('searchStatus', (data) => {
+        setSyncStatus(data.message);
+      });
+      
+      socket.on('searchComplete', async (data) => {
+        setSyncStatus('Sync complete!');
+        setSyncingEmails(false);
+        
+        // Handle LinkedIn conversations data
+        if (data.conversations && data.conversations.length > 0) {
+          const linkedinConversations = data.conversations.map((conv: any) => ({
+            conversationId: conv.conversationUrl || `linkedin-${conv.senderName}`,
+            conversation_id: conv.conversationUrl || `linkedin-${conv.senderName}`,
+            prospect: {
+              linkedin_data: {
+                name: conv.senderName,
+                profileImageUrl: conv.profileImg,
+                profileUrl: conv.conversationUrl
+              }
+            },
+            platform: 'linkedin' as const,
+            lastMessage: {
+              content: conv.lastMessage,
+              created_at: conv.lastMessageTime,
+              type: conv.lastMessage.startsWith('You:') ? 'sent' : 'received',
+              status: 'delivered'
+            },
+            unreadCount: 0,
+            totalMessages: 1
+          }));
+          
+          setConversations(prev => {
+            const existingIds = new Set(prev.map(c => c.conversationId || c.conversation_id));
+            const newConvs = linkedinConversations.filter((c: any) => !existingIds.has(c.conversationId));
+            return [...newConvs, ...prev];
+          });
+        } else {
+          await fetchConversations();
+        }
+        
+        setTimeout(() => setSyncStatus(''), 3000);
+      });
+      
+      socket.on('searchError', (data) => {
+        setError(data.message);
+        setSyncingEmails(false);
+        setSyncStatus('');
+      });
+    }
+    
+    return () => {
+      if (socket) {
+        socket.off('searchStarted');
+        socket.off('searchStatus');
+        socket.off('searchComplete');
+        socket.off('searchError');
+      }
+    };
+  }, [socket]);
+
+  // Auto-load messages when LinkedIn or Sales Nav tab is selected (only once per session)
+  useEffect(() => {
+    if (activeTab === 'conversations' && activePlatform === 'linkedin' && !hasAutoLoadedRef.current.linkedin) {
+      hasAutoLoadedRef.current.linkedin = true;
+      handleSyncLinkedInMessages();
+    } else if (activeTab === 'conversations' && activePlatform === 'email' && !hasAutoLoadedRef.current.email) {
+      hasAutoLoadedRef.current.email = true;
+      handleSyncLinkedInMessages();
+    }
+  }, [activePlatform, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'sent') {
+      fetchSentEmails();
+    }
+  }, [activeTab, activePlatform]);
+
+  const fetchEmailAccounts = async () => {
+    try {
+      const response = await fetch('/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.user?.email_accounts) {
+          setEmailAccounts(data.user.email_accounts);
+          if (data.user.email_accounts.length > 0) {
+            setEmailFrom(data.user.email_accounts[0].email);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching email accounts:', err);
+    }
+  };
+
+  const fetchSentEmails = async () => {
+    try {
+      setSentEmailsLoading(true);
+      const params = new URLSearchParams();
+      if (activePlatform === 'email') {
+        params.append('platform', 'email');
+      }
+      
+      const response = await fetch(`/api/messages/sent-emails?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSentEmails(data.emails || []);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching sent emails:', err);
+    } finally {
+      setSentEmailsLoading(false);
+    }
+  };
 
   const fetchConversations = async () => {
     try {
@@ -150,7 +316,8 @@ const MessagesPage: React.FC = () => {
         );
         
         for (const msg of unreadMessages) {
-          markMessageAsRead(msg._id);
+          const msgId = msg._id || msg.id;
+          if (msgId) markMessageAsRead(msgId);
         }
       } else {
         throw new Error(data.error || 'Failed to fetch messages');
@@ -163,41 +330,20 @@ const MessagesPage: React.FC = () => {
     }
   };
 
-  const handleSyncEmails = async () => {
-    setSyncingEmails(true);
-    try {
-      const response = await fetch('/api/messages/email-sync', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          since: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // Last 24 hours
-        })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to sync emails');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setError('');
-        // Refresh conversations to show new emails
-        await fetchConversations();
-        if (selectedConversation) {
-          await fetchMessages(selectedConversation.conversationId);
-        }
-      } else {
-        throw new Error(data.error || 'Failed to sync emails');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sync emails');
-    } finally {
-      setSyncingEmails(false);
+  const handleSyncLinkedInMessages = () => {
+    if (!socket) {
+      setError('WebSocket connection not established');
+      return;
     }
+    
+    setSyncingEmails(true);
+    setSyncStatus('Initiating LinkedIn message sync...');
+    
+    const filters = activePlatform === 'email' 
+      ? { searchType: 'salesNavigator' }
+      : {};
+    
+    socket.emit('fetchMessages', { filters });
   };
 
   const handleGenerateEmailDraft = async () => {
@@ -212,7 +358,7 @@ const MessagesPage: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          prospectId: selectedConversation.prospect._id,
+          prospectId: (selectedConversation.prospect || selectedConversation.prospects)?._id,
           messageType: 'cold_email',
           tone: 'professional'
         })
@@ -225,9 +371,11 @@ const MessagesPage: React.FC = () => {
 
       const data = await response.json();
       if (data.success && data.draft) {
+        const prospect = selectedConversation.prospect || selectedConversation.prospects;
+        const contactInfo = prospect?.contactInfo || prospect?.contact_info;
         setEmailSubject(data.draft.subject);
         setNewMessage(data.draft.content);
-        setEmailTo(data.draft.to || selectedConversation.prospect.contactInfo?.email || '');
+        setEmailTo(data.draft.to || contactInfo?.email || '');
         setError('');
       } else {
         throw new Error(data.error || 'Failed to generate email draft');
@@ -264,18 +412,22 @@ const MessagesPage: React.FC = () => {
 
     setSendingMessage(true);
     try {
+      const selectedProspect = selectedConversation.prospect || selectedConversation.prospects;
+      const selectedConvId = selectedConversation.conversationId || selectedConversation.conversation_id;
+      
       const requestBody: any = {
-        prospectId: selectedConversation.prospect._id,
+        prospect_id: selectedProspect?._id || selectedProspect?.id,
         content: newMessage.trim(),
-        conversationId: selectedConversation.conversationId,
-        messageType: 'manual',
+        conversation_id: selectedConvId,
+        message_type: 'manual',
         platform: selectedConversation.platform
       };
 
       // Add email-specific fields
       if (selectedConversation.platform === 'email') {
+        const contactInfo = selectedProspect?.contactInfo || selectedProspect?.contact_info;
         requestBody.subject = emailSubject.trim();
-        requestBody.to = emailTo || selectedConversation.prospect.contactInfo?.email;
+        requestBody.to = emailTo || contactInfo?.email;
         requestBody.from = emailFrom;
       }
 
@@ -300,8 +452,7 @@ const MessagesPage: React.FC = () => {
         setNewMessage('');
         setEmailSubject('');
         
-        // Update the conversation list
-        fetchConversations();
+        await fetchConversations();
         setError('');
       } else {
         throw new Error(data.error || 'Failed to send message');
@@ -315,14 +466,17 @@ const MessagesPage: React.FC = () => {
 
   const handleConversationSelect = (conversation: Conversation) => {
     setSelectedConversation(conversation);
-    // Set email fields based on conversation platform
+    const prospect = conversation.prospect || conversation.prospects;
+    const convId = conversation.conversationId || conversation.conversation_id || '';
+    const contactInfo = prospect?.contactInfo || prospect?.contact_info;
+    
     if (conversation.platform === 'email') {
-      setEmailTo(conversation.prospect.contactInfo?.email || '');
-      // Get user's email from localStorage or fetch from API
-      const userEmail = sessionStorage.getItem('userEmail') || '';
-      setEmailFrom(userEmail);
+      setEmailTo(contactInfo?.email || '');
+      if (emailAccounts.length > 0 && !emailFrom) {
+        setEmailFrom(emailAccounts[0].email);
+      }
     }
-    fetchMessages(conversation.conversationId);
+    fetchMessages(convId);
   };
 
   const handleBackToList = () => {
@@ -337,8 +491,8 @@ const MessagesPage: React.FC = () => {
 
   // Send email from the "Compose New Email" modal (ad-hoc email)
   const handleSendModalEmail = async () => {
-    if (!emailTo.trim() || !emailSubject.trim() || !newMessage.trim()) {
-      setError('To, subject and message are required');
+    if (!emailTo.trim() || !emailSubject.trim() || !newMessage.trim() || !emailFrom.trim()) {
+      setError('To, from, subject and message are required');
       return;
     }
 
@@ -352,7 +506,7 @@ const MessagesPage: React.FC = () => {
         },
         body: JSON.stringify({
           to: emailTo.trim(),
-          from: emailFrom || undefined,
+          from: emailFrom.trim(),
           subject: emailSubject.trim(),
           content: newMessage.trim()
         })
@@ -363,20 +517,20 @@ const MessagesPage: React.FC = () => {
         throw new Error(data.error || 'Failed to send email');
       }
 
-      // Success — close modal and clear fields, refresh conversations
       setShowNewEmailModal(false);
       setEmailSubject('');
       setEmailTo('');
       setEmailFrom('');
       setNewMessage('');
       setError('');
-      // Refresh conversations/messages so the new email shows up if tied to a prospect
-      await fetchConversations();
-      if (selectedConversation) {
-        await fetchMessages(selectedConversation.conversationId);
+      
+      if (activeTab === 'sent') {
+        await fetchSentEmails();
+      } else {
+        await fetchConversations();
       }
     } catch (err) {
-      console.error('Error sending new email from modal:', err);
+      console.error('Error sending email:', err);
       setError(err instanceof Error ? err.message : 'Failed to send email');
     } finally {
       setSendingMessage(false);
@@ -417,10 +571,12 @@ const MessagesPage: React.FC = () => {
 
   const filteredConversations = conversations.filter(conversation => {
     const platformMatch = activePlatform === 'all' || conversation.platform === activePlatform;
+    const prospect = conversation.prospect || conversation.prospects;
+    const linkedinData = prospect?.linkedinData || prospect?.linkedin_data;
     const searchMatch = 
-      conversation.prospect.linkedinData?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (conversation.prospect.linkedinData?.company && 
-         conversation.prospect.linkedinData?.company.toLowerCase().includes(searchTerm.toLowerCase()));
+      linkedinData?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (linkedinData?.company && 
+         linkedinData?.company.toLowerCase().includes(searchTerm.toLowerCase()));
     
     return platformMatch && searchMatch;
   });
@@ -462,13 +618,16 @@ const MessagesPage: React.FC = () => {
                 <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={handleSyncEmails}
+                    onClick={handleSyncLinkedInMessages}
                     disabled={syncingEmails}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md disabled:opacity-50"
-                    title="Sync Emails"
+                    className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md disabled:opacity-50"
+                    title="Sync LinkedIn Messages"
                   >
                     <RefreshCw className={`h-4 w-4 ${syncingEmails ? 'animate-spin' : ''}`} />
                   </button>
+                  {syncStatus && (
+                    <span className="text-xs text-gray-600">{syncStatus}</span>
+                  )}
                   <button
                     onClick={() => setShowNewEmailModal(true)}
                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
@@ -482,41 +641,67 @@ const MessagesPage: React.FC = () => {
                 </div>
               </div>
               
-              {/* Platform Selector */}
+              {/* Tab Selector */}
               <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
                 <button
-                  onClick={() => setActivePlatform('all')}
-                  className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                    activePlatform === 'all'
+                  onClick={() => setActiveTab('conversations')}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'conversations'
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  All
+                  Conversations
                 </button>
                 <button
-                  onClick={() => setActivePlatform('linkedin')}
-                  className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                    activePlatform === 'linkedin'
-                      ? 'bg-white text-blue-600 shadow-sm'
+                  onClick={() => setActiveTab('sent')}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'sent'
+                      ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  <Linkedin className="h-4 w-4 mr-1" />
-                  LinkedIn
-                </button>
-                <button
-                  onClick={() => setActivePlatform('email')}
-                  className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                    activePlatform === 'email'
-                      ? 'bg-white text-green-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <Mail className="h-4 w-4 mr-1" />
-                  Email
+                  Emails
                 </button>
               </div>
+
+              {/* Platform Selector - Only show for conversations tab */}
+              {activeTab === 'conversations' && (
+                <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
+                  <button
+                    onClick={() => setActivePlatform('all')}
+                    className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                      activePlatform === 'all'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setActivePlatform('linkedin')}
+                    className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                      activePlatform === 'linkedin'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Linkedin className="h-4 w-4 mr-1" />
+                    LinkedIn
+                  </button>
+                  <button
+                    onClick={() => setActivePlatform('email')}
+                    className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                      activePlatform === 'email'
+                        ? 'bg-white text-green-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Linkedin className="h-4 w-4 mr-1" />
+                    Sales Nav.
+                  </button>
+                </div>
+              )}
 
               {/* Search */}
               <div className="relative">
@@ -531,9 +716,10 @@ const MessagesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Conversations */}
+            {/* Content Area */}
             <div className="flex-1 overflow-y-auto">
-              {filteredConversations.length === 0 ? (
+              {activeTab === 'conversations' ? 
+                filteredConversations.length === 0 ? (
                 <div className="p-8 text-center">
                   <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -548,12 +734,17 @@ const MessagesPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-200">
-                  {filteredConversations.map((conversation) => (
+                  {filteredConversations.map((conversation) => {
+                    const convId = conversation.conversationId || conversation.conversation_id;
+                    const prospect = conversation.prospect || conversation.prospects;
+                    const selectedConvId = selectedConversation?.conversationId || selectedConversation?.conversation_id;
+                    
+                    return (
                     <div
-                      key={conversation.conversationId}
+                      key={convId}
                       onClick={() => handleConversationSelect(conversation)}
                       className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                        selectedConversation?.conversationId === conversation.conversationId 
+                        selectedConvId === convId 
                           ? 'bg-blue-50 border-r-2 border-blue-500' 
                           : ''
                       }`}
@@ -561,10 +752,10 @@ const MessagesPage: React.FC = () => {
                       <div className="flex items-center space-x-3">
                         {/* Profile Image */}
                         <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                          {conversation.prospect.linkedinData?.profileImageUrl ? (
+                          {((prospect?.linkedinData || prospect?.linkedin_data)?.profileImageUrl) ? (
                             <img 
-                              src={conversation.prospect.linkedinData?.profileImageUrl} 
-                              alt={conversation.prospect.linkedinData?.name}
+                              src={(prospect?.linkedinData || prospect?.linkedin_data)?.profileImageUrl} 
+                              alt={(prospect?.linkedinData || prospect?.linkedin_data)?.name}
                               className="h-10 w-10 rounded-full object-cover"
                             />
                           ) : (
@@ -576,7 +767,7 @@ const MessagesPage: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium text-gray-900 truncate">
-                              {conversation.prospect.linkedinData?.name}
+                              {(prospect?.linkedinData || prospect?.linkedin_data)?.name}
                             </p>
                             <div className="flex items-center space-x-1">
                               {/* Platform Indicator */}
@@ -597,14 +788,14 @@ const MessagesPage: React.FC = () => {
                                 </span>
                               )}
                               <span className="text-xs text-gray-500">
-                                {formatMessageTime(conversation.lastMessage.createdAt)}
+                                {formatMessageTime(conversation.lastMessage.createdAt || conversation.lastMessage.created_at || '')}
                               </span>
                             </div>
                           </div>
                           
-                          {conversation.prospect.linkedinData?.company && (
+                          {(prospect?.linkedinData || prospect?.linkedin_data)?.company && (
                             <p className="text-xs text-gray-500 truncate">
-                              {conversation.prospect.linkedinData?.company}
+                              {(prospect?.linkedinData || prospect?.linkedin_data)?.company}
                             </p>
                           )}
                           
@@ -622,15 +813,60 @@ const MessagesPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              ) : (
+                /* Sent Emails List */
+                sentEmailsLoading ? (
+                  <div className="p-8 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" />
+                    <p className="mt-2 text-sm text-gray-600">Loading sent emails...</p>
+                  </div>
+                ) : sentEmails.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Mail className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No sent emails</h3>
+                    <p className="mt-1 text-sm text-gray-500">Emails you send will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {sentEmails.map((email) => (
+                      <div key={email.id} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Mail className="h-4 w-4 text-green-600" />
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {email.subject}
+                              </p>
+                            </div>
+                            <p className="text-xs text-gray-500">To: {email.to_email}</p>
+                            <p className="text-xs text-gray-500">From: {email.from_email}</p>
+                            <p className="text-sm text-gray-600 truncate mt-1">{email.content}</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {formatMessageTime(email.sent_at)}
+                            </p>
+                          </div>
+                          <div className="ml-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </div>
 
           {/* Conversation View */}
           <div className={`${selectedConversation ? 'block' : 'hidden lg:block'} flex-1 flex flex-col`}>
-            {selectedConversation ? (
+            {selectedConversation ? (() => {
+              const selectedProspect = selectedConversation.prospect || selectedConversation.prospects;
+              const selectedConvId = selectedConversation.conversationId || selectedConversation.conversation_id || '';
+              
+              return (
               <>
                 {/* Conversation Header */}
                 <div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -644,10 +880,10 @@ const MessagesPage: React.FC = () => {
                       </button>
                       
                       <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        {selectedConversation.prospect.linkedinData?.profileImageUrl ? (
+                        {((selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.profileImageUrl) ? (
                           <img 
-                            src={selectedConversation.prospect.linkedinData?.profileImageUrl} 
-                            alt={selectedConversation.prospect.linkedinData?.name}
+                            src={(selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.profileImageUrl} 
+                            alt={(selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.name}
                             className="h-10 w-10 rounded-full object-cover"
                           />
                         ) : (
@@ -657,7 +893,7 @@ const MessagesPage: React.FC = () => {
                       
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">
-                          {selectedConversation.prospect.linkedinData?.name}
+                          {(selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.name}
                         </h3>
                         <div className="flex items-center space-x-2">
                           <div className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -667,24 +903,24 @@ const MessagesPage: React.FC = () => {
                           }`}>
                             {selectedConversation.platform === 'email' ? 'Email' : 'LinkedIn'}
                           </div>
-                          {selectedConversation.prospect.linkedinData?.company && (
+                          {(selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.company && (
                             <p className="text-sm text-gray-500">
-                              {selectedConversation.prospect.linkedinData?.company}
+                              {(selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.company}
                             </p>
                           )}
                         </div>
-                        {selectedConversation.platform === 'email' && selectedConversation.prospect.contactInfo?.email && (
+                        {selectedConversation.platform === 'email' && (selectedProspect?.contactInfo || selectedProspect?.contact_info)?.email && (
                           <p className="text-sm text-gray-500">
-                            {selectedConversation.prospect.contactInfo.email}
+                            {(selectedProspect?.contactInfo || selectedProspect?.contact_info)?.email}
                           </p>
                         )}
                       </div>
                     </div>
                     
                     <div className="flex items-center space-x-2">
-                      {selectedConversation.prospect.linkedinData?.profileUrl && (
+                      {(selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.profileUrl && (
                         <a
-                          href={selectedConversation.prospect.linkedinData?.profileUrl}
+                          href={(selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.profileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
@@ -713,9 +949,13 @@ const MessagesPage: React.FC = () => {
                       <p className="mt-2 text-sm text-gray-500">No messages in this conversation yet.</p>
                     </div>
                   ) : (
-                    messages.map((message) => (
+                    messages.map((message) => {
+                      const msgId = message._id || message.id;
+                      const msgCreatedAt = message.createdAt || message.created_at || '';
+                      
+                      return (
                       <div
-                        key={message._id}
+                        key={msgId}
                         className={`flex ${message.type === 'sent' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
@@ -739,7 +979,7 @@ const MessagesPage: React.FC = () => {
                             message.type === 'sent' ? 'text-blue-100' : 'text-gray-500'
                           }`}>
                             <span className="text-xs">
-                              {formatMessageTime(message.createdAt)}
+                              {formatMessageTime(msgCreatedAt)}
                             </span>
                             {message.type === 'sent' && (
                               <div className="ml-2">
@@ -756,7 +996,8 @@ const MessagesPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
@@ -778,13 +1019,18 @@ const MessagesPage: React.FC = () => {
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
-                          <input
-                            type="email"
+                          <select
                             value={emailFrom}
                             onChange={(e) => setEmailFrom(e.target.value)}
                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="your@example.com"
-                          />
+                          >
+                            <option value="">Select email account</option>
+                            {emailAccounts.map((account) => (
+                              <option key={account.email} value={account.email}>
+                                {account.email} ({account.provider})
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                       <div>
@@ -847,7 +1093,7 @@ const MessagesPage: React.FC = () => {
                       disabled={
                         !newMessage.trim() || 
                         sendingMessage || 
-                        (selectedConversation.platform === 'email' && (!emailSubject.trim() || !emailTo.trim()))
+                        (selectedConversation.platform === 'email' && (!emailSubject.trim() || !emailTo.trim() || !emailFrom.trim()))
                       }
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                     >
@@ -867,7 +1113,8 @@ const MessagesPage: React.FC = () => {
                   </p>
                 </div>
               </>
-            ) : (
+              );
+            })() : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
@@ -916,13 +1163,18 @@ const MessagesPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
-                      <input
-                        type="email"
+                      <select
                         value={emailFrom}
                         onChange={(e) => setEmailFrom(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="your@example.com"
-                      />
+                      >
+                        <option value="">Select email account</option>
+                        {emailAccounts.map((account) => (
+                          <option key={account.email} value={account.email}>
+                            {account.email} ({account.provider})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   
@@ -964,7 +1216,7 @@ const MessagesPage: React.FC = () => {
                   </button>
                   <button
                     onClick={handleSendModalEmail}
-                    disabled={sendingMessage || !emailTo.trim() || !emailSubject.trim() || !newMessage.trim()}
+                    disabled={sendingMessage || !emailTo.trim() || !emailFrom.trim() || !emailSubject.trim() || !newMessage.trim()}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   >
                     {sendingMessage ? (

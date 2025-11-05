@@ -1,9 +1,9 @@
 {
-  "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
+  "/_app": "pages/_app.js",
   "/_document": "pages/_document.js",
-  "/campaigns": "pages/campaigns.js",
+  "/dashboard": "pages/dashboard.js",
   "/api/campaigns": "pages/api/campaigns.js",
-  "/signin": "pages/signin.js",
-  "/prospects": "pages/prospects.js"
+  "/knowledge": "pages/knowledge.js",
+  "/campaigns": "pages/campaigns.js"
 }

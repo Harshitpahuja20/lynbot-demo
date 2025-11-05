@@ -1,6 +1,7 @@
 import { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest } from '../../../../lib/middleware/withAuth';
 import { campaignOperations, prospectOperations, userOperations } from '../../../../lib/database';
+import { getSupabaseAdminClient } from '../../../../lib/supabase';
 import LinkedInService from '../../../../lib/services/linkedinService';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
@@ -132,6 +133,17 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
           totalProspects: campaign.statistics.totalProspects + newProspects,
           lastActivity: new Date().toISOString()
         }
+      });
+
+      // Save search results to search_results table
+      const supabase = getSupabaseAdminClient();
+      await supabase.from('search_results').insert({
+        campaign_id: campaignId,
+        user_id: userId,
+        search_filters: campaign.search_criteria,
+        results: prospects,
+        total_results: prospects.length,
+        status: 'completed'
       });
 
       res.json({
