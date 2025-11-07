@@ -177,7 +177,7 @@ const ProspectsPage: React.FC = () => {
     if (!iso) return "—";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString();
+    return d.toNEXT_NEST_API_URLeDateString();
   };
 
   const openResultsModal = (item: SearchResult) => {

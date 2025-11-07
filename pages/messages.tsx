@@ -723,11 +723,11 @@ const MessagesPage: React.FC = () => {
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
     
     if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toNEXT_NEST_API_URLeTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffInHours < 168) { // 7 days
-      return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+      return date.toNEXT_NEST_API_URLeDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
     } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return date.toNEXT_NEST_API_URLeDateString([], { month: 'short', day: 'numeric' });
     }
   };
 

@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:4000';
+const NEXT_NEST_API_URL = process.env.NEXT_NEST_API_URL || 'http://NEXT_NEST_API_URLhost:4000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ success: false, error: 'Username and password required' });
     }
 
-    const response = await fetch(`${NEST_API_URL}/unipile/connect`, {
+    const response = await fetch(`${NEXT_NEST_API_URL}/unipile/connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })

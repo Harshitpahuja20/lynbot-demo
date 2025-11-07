@@ -252,7 +252,7 @@ const CampaignsPage: React.FC = () => {
             await fetch('/api/campaigns/search-results', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
@@ -327,7 +327,7 @@ const CampaignsPage: React.FC = () => {
       
       const response = await fetch('/api/campaigns', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -376,7 +376,7 @@ const CampaignsPage: React.FC = () => {
     try {
       const selectedProspects = searchResults.filter((p: any) => toSaveUrls.includes(p.profileUrl));
 
-      const token = localStorage.getItem('token');
+      const token = NEXT_NEST_API_URLStorage.getItem('token');
 
       // Prepare payload for bulk endpoint - save complete object
       const prospectsPayload = selectedProspects.map((p: any) => ({
@@ -447,7 +447,7 @@ const CampaignsPage: React.FC = () => {
       const response = await fetch('/api/campaigns', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(campaignData)
@@ -614,7 +614,7 @@ const CampaignsPage: React.FC = () => {
       const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -647,7 +647,7 @@ const CampaignsPage: React.FC = () => {
       const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`
         }
       });
 
@@ -679,7 +679,7 @@ const CampaignsPage: React.FC = () => {
         const response = await fetch('/api/ai/generate-message', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -707,7 +707,7 @@ const CampaignsPage: React.FC = () => {
       const response = await fetch('/api/messages', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -755,7 +755,7 @@ const CampaignsPage: React.FC = () => {
       // Get user's Unipile account ID
       const profileResponse = await fetch('/api/user/profile', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`
         }
       });
       
@@ -779,7 +779,7 @@ const CampaignsPage: React.FC = () => {
       const searchResponse = await fetch('/api/unipile/search', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -820,7 +820,7 @@ const CampaignsPage: React.FC = () => {
           await fetch('/api/campaigns/search-results', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Authorization': `Bearer ${NEXT_NEST_API_URLStorage.getItem('token')}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
