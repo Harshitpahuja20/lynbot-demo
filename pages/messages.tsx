@@ -108,7 +108,7 @@ const MessagesPage: React.FC = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [newMessage, setNewMessage] = useState('');
-  const [activePlatform, setActivePlatform] = useState<'all' | 'linkedin' | 'email'>('all');
+  const [activePlatform, setActivePlatform] = useState<'linkedin' | 'email'>('linkedin');
   const [emailSubject, setEmailSubject] = useState('');
   const [emailTo, setEmailTo] = useState('');
   const [emailFrom, setEmailFrom] = useState('');
@@ -119,76 +119,72 @@ const MessagesPage: React.FC = () => {
   const [sentEmailsLoading, setSentEmailsLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
   const hasAutoLoadedRef = React.useRef<{linkedin: boolean, email: boolean}>({linkedin: false, email: false});
-  const { socket, isConnected: wsConnected, emit } = useWebSocket();
+  const messagesContainerRef = React.useRef<HTMLDivElement>(null);
+  const { socket } = useWebSocket();
 
   useEffect(() => {
     fetchConversations();
     fetchEmailAccounts();
     
-    if (socket) {
-      socket.on('searchStarted', (data) => {
-        setSyncStatus(data.message);
-      });
-      
-      socket.on('searchStatus', (data) => {
-        setSyncStatus(data.message);
-      });
-      
-      socket.on('searchComplete', async (data) => {
-        setSyncStatus('Sync complete!');
-        setSyncingEmails(false);
+    // Listen for new LinkedIn messages from webhook
+    if (socket && socket.connected) {
+      socket.on('newLinkedInMessage', (data) => {
+        console.log('New LinkedIn message received:', data);
         
-        // Handle LinkedIn conversations data
-        if (data.conversations && data.conversations.length > 0) {
-          const linkedinConversations = data.conversations.map((conv: any) => ({
-            conversationId: conv.conversationUrl || `linkedin-${conv.senderName}`,
-            conversation_id: conv.conversationUrl || `linkedin-${conv.senderName}`,
-            prospect: {
-              linkedin_data: {
-                name: conv.senderName,
-                profileImageUrl: conv.profileImg,
-                profileUrl: conv.conversationUrl
-              }
-            },
-            platform: 'linkedin' as const,
-            lastMessage: {
-              content: conv.lastMessage,
-              created_at: conv.lastMessageTime,
-              type: conv.lastMessage.startsWith('You:') ? 'sent' : 'received',
-              status: 'delivered'
-            },
-            unreadCount: 0,
-            totalMessages: 1
-          }));
-          
-          setConversations(prev => {
-            const existingIds = new Set(prev.map(c => c.conversationId || c.conversation_id));
-            const newConvs = linkedinConversations.filter((c: any) => !existingIds.has(c.conversationId));
-            return [...newConvs, ...prev];
-          });
-        } else {
-          await fetchConversations();
+        // Skip if this is a message we sent (is_sender = true)
+        if (data.is_sender === true) {
+          return;
         }
         
-        setTimeout(() => setSyncStatus(''), 3000);
-      });
-      
-      socket.on('searchError', (data) => {
-        setError(data.message);
-        setSyncingEmails(false);
-        setSyncStatus('');
+        // If viewing this chat, add message to current messages
+        const currentChatId = selectedConversation?.conversationId || selectedConversation?.conversation_id;
+        if (currentChatId === data.chat_id) {
+          const newMsg = {
+            id: data.message_id,
+            content: data.message || (data.attachments?.length > 0 ? '[Attachment]' : ''),
+            type: 'received' as const,
+            platform: 'linkedin' as const,
+            status: 'delivered',
+            created_at: data.timestamp,
+            automated: false
+          };
+          setMessages(prev => {
+            // Prevent duplicate messages
+            if (prev.some(m => m.id === data.message_id)) {
+              return prev;
+            }
+            return [...prev, newMsg];
+          });
+        }
+        
+        // Update conversation last message without full reload
+        setConversations(prev => prev.map(conv => {
+          const convId = conv.conversationId || conv.conversation_id;
+          if (convId === data.chat_id) {
+            return {
+              ...conv,
+              lastMessage: {
+                content: data.message || '[Attachment]',
+                created_at: data.timestamp,
+                type: 'received' as const,
+                status: 'delivered',
+                platform: 'linkedin' as const,
+                automated: false
+              },
+              unreadCount: currentChatId === data.chat_id ? conv.unreadCount : (conv.unreadCount || 0) + 1
+            };
+          }
+          return conv;
+        }));
       });
     }
     
     return () => {
-      if (socket) {
-        socket.off('searchStarted');
-        socket.off('searchStatus');
-        socket.off('searchComplete');
-        socket.off('searchError');
+      if (socket && socket.connected) {
+        socket.off('newLinkedInMessage');
       }
     };
-  }, [socket]);
+  }, [socket, selectedConversation]);
 
   // Auto-load messages when LinkedIn or Sales Nav tab is selected (only once per session)
   useEffect(() => {
@@ -206,6 +202,20 @@ const MessagesPage: React.FC = () => {
       fetchSentEmails();
     }
   }, [activeTab, activePlatform]);
+
+  // Auto-scroll to bottom when messages change or loading completes
+  useEffect(() => {
+    if (!messagesLoading && messagesContainerRef.current && messages.length > 0) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }, 100);
+    }
+  }, [messages, messagesLoading]);
 
   const fetchEmailAccounts = async () => {
     try {
@@ -260,7 +270,7 @@ const MessagesPage: React.FC = () => {
       setLoading(true);
       setError('');
       
-      const platformParam = activePlatform !== 'all' ? `&platform=${activePlatform}` : '';
+      const platformParam = `&platform=${activePlatform}`;
       const response = await fetch(`/api/messages?${platformParam}`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
@@ -278,7 +288,15 @@ const MessagesPage: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        setConversations(data.conversations || []);
+        const dbConversations = data.conversations || [];
+        
+        // Merge with existing LinkedIn conversations from Unipile
+        setConversations(prev => {
+          const linkedinConvs = prev.filter(c => c.platform === 'linkedin');
+          const dbConvIds = new Set(dbConversations.map((c: any) => c.conversationId || c.conversation_id));
+          const uniqueLinkedinConvs = linkedinConvs.filter(c => !dbConvIds.has(c.conversationId || c.conversation_id));
+          return [...uniqueLinkedinConvs, ...dbConversations];
+        });
       } else {
         throw new Error(data.error || 'Failed to fetch conversations');
       }
@@ -290,11 +308,45 @@ const MessagesPage: React.FC = () => {
     }
   };
 
-  const fetchMessages = async (conversationId: string) => {
+  const fetchMessages = async (conversationId: string, platform?: string) => {
     try {
       setMessagesLoading(true);
       setError('');
       
+      // Use Unipile API for LinkedIn conversations
+      if (platform === 'linkedin') {
+        const messagesResponse = await fetch(
+          `/api/unipile/messages?chat_id=${conversationId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+            }
+          }
+        );
+        
+        if (messagesResponse.ok) {
+          const messagesData = await messagesResponse.json();
+          
+          if (messagesData.success && messagesData.data?.items) {
+            // Transform Unipile messages to our format
+            const transformedMessages = messagesData.data.items.map((msg: any) => ({
+              id: msg.id,
+              content: msg.body || msg.text || '',
+              type: msg.is_sender ? 'sent' : 'received',
+              platform: 'linkedin',
+              status: 'delivered',
+              created_at: msg.timestamp || msg.date,
+              automated: false
+            })).reverse(); // Reverse to show oldest first
+            
+            setMessages(transformedMessages);
+            setMessagesLoading(false);
+            return;
+          }
+        }
+      }
+      
+      // Fallback to database API for email or if Unipile fails
       const response = await fetch(`/api/messages?conversationId=${conversationId}`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
@@ -330,20 +382,81 @@ const MessagesPage: React.FC = () => {
     }
   };
 
-  const handleSyncLinkedInMessages = () => {
-    if (!socket) {
-      setError('WebSocket connection not established');
-      return;
-    }
-    
+  const handleSyncLinkedInMessages = async () => {
     setSyncingEmails(true);
-    setSyncStatus('Initiating LinkedIn message sync...');
+    setSyncStatus('Fetching LinkedIn chats...');
+    setError('');
     
-    const filters = activePlatform === 'email' 
-      ? { searchType: 'salesNavigator' }
-      : {};
-    
-    socket.emit('fetchMessages', { filters });
+    try {
+      // Get user's Unipile account ID from profile
+      const profileResponse = await fetch('/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+      
+      if (!profileResponse.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      
+      const profileData = await profileResponse.json();
+      const accountId = profileData.user?.unipile_account_id;
+      
+      if (!accountId) {
+        throw new Error('LinkedIn account not connected via Unipile');
+      }
+      
+      // Fetch chats from Unipile
+      const chatsResponse = await fetch(`/api/unipile/chats?account_id=${accountId}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+      
+      if (!chatsResponse.ok) {
+        throw new Error('Failed to fetch LinkedIn chats');
+      }
+      
+      const chatsData = await chatsResponse.json();
+      
+      if (chatsData.success && chatsData.data?.items) {
+        // Transform Unipile chats to conversation format
+        const linkedinConversations = chatsData.data.items.map((chat: any) => ({
+          conversationId: chat.id,
+          conversation_id: chat.id,
+          prospect: {
+            linkedin_data: {
+              name: chat.attendees?.[0]?.display_name || 'Unknown',
+              profileImageUrl: chat.attendees?.[0]?.profile_picture_url,
+              profileUrl: chat.attendees?.[0]?.identifier
+            }
+          },
+          platform: 'linkedin' as const,
+          lastMessage: {
+            content: chat.last_message?.body || '',
+            created_at: chat.timestamp || chat.last_message?.date,
+            type: chat.last_message?.is_sender ? 'sent' : 'received',
+            status: 'delivered'
+          },
+          unreadCount: chat.unread_count || 0,
+          totalMessages: 1
+        }));
+        
+        setConversations(prev => {
+          const existingIds = new Set(prev.map(c => c.conversationId || c.conversation_id));
+          const newConvs = linkedinConversations.filter((c: any) => !existingIds.has(c.conversationId));
+          return [...newConvs, ...prev];
+        });
+        
+        setSyncStatus('Sync complete!');
+        setTimeout(() => setSyncStatus(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error syncing LinkedIn chats:', err);
+      setError(err instanceof Error ? err.message : 'Failed to sync LinkedIn chats');
+    } finally {
+      setSyncingEmails(false);
+    }
   };
 
   const handleGenerateEmailDraft = async () => {
@@ -412,50 +525,100 @@ const MessagesPage: React.FC = () => {
 
     setSendingMessage(true);
     try {
-      const selectedProspect = selectedConversation.prospect || selectedConversation.prospects;
       const selectedConvId = selectedConversation.conversationId || selectedConversation.conversation_id;
       
-      const requestBody: any = {
-        prospect_id: selectedProspect?._id || selectedProspect?.id,
-        content: newMessage.trim(),
-        conversation_id: selectedConvId,
-        message_type: 'manual',
-        platform: selectedConversation.platform
-      };
+      // Use Unipile API for LinkedIn messages
+      if (selectedConversation.platform === 'linkedin') {
+        const selectedProspect = selectedConversation.prospect || selectedConversation.prospects;
+        const profileResponse = await fetch('/api/user/profile', {
+          headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
+        });
+        const profileData = await profileResponse.json();
+        const accountId = profileData.user?.unipile_account_id;
+        
+        const response = await fetch('/api/unipile/send-message', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            chat_id: selectedConvId,
+            text: newMessage.trim(),
+            prospect_id: selectedProspect?._id || selectedProspect?.id,
+            account_id: accountId,
+            recipient_name: (selectedProspect?.linkedinData || selectedProspect?.linkedin_data)?.name
+          })
+        });
 
-      // Add email-specific fields
-      if (selectedConversation.platform === 'email') {
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to send message');
+        }
+
+        const data = await response.json();
+        console.log('LinkedIn message send:', data);
+        if (data.success) {
+          const sentMessageId = data.data.message_id || Date.now().toString();
+          const newMsg = {
+            id: sentMessageId,
+            content: newMessage.trim(),
+            type: 'sent' as const,
+            platform: 'linkedin' as const,
+            status: 'delivered',
+            created_at: new Date().toISOString(),
+            automated: false
+          };
+          setMessages(prev => {
+            // Check if message already exists to prevent duplicates
+            if (prev.some(m => m.id === sentMessageId)) {
+              return prev;
+            }
+            return [...prev, newMsg];
+          });
+          setNewMessage('');
+          setError('');
+        }
+      } else {
+        // Use database API for email messages
+        const selectedProspect = selectedConversation.prospect || selectedConversation.prospects;
+        const requestBody: any = {
+          prospect_id: selectedProspect?._id || selectedProspect?.id,
+          content: newMessage.trim(),
+          conversation_id: selectedConvId,
+          message_type: 'manual',
+          platform: selectedConversation.platform
+        };
+
         const contactInfo = selectedProspect?.contactInfo || selectedProspect?.contact_info;
         requestBody.subject = emailSubject.trim();
         requestBody.to = emailTo || contactInfo?.email;
         requestBody.from = emailFrom;
-      }
 
-      const response = await fetch('/api/messages', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to send message');
+        }
+
         const data = await response.json();
-        throw new Error(data.error || 'Failed to send message');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        // Add the new message to the current conversation
-        setMessages(prev => [...prev, data.data]);
-        setNewMessage('');
-        setEmailSubject('');
-        
-        await fetchConversations();
-        setError('');
-      } else {
-        throw new Error(data.error || 'Failed to send message');
+        if (data.success) {
+          setMessages(prev => [...prev, data.data]);
+          setNewMessage('');
+          setEmailSubject('');
+          await fetchConversations();
+          setError('');
+        } else {
+          throw new Error(data.error || 'Failed to send message');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
@@ -476,7 +639,7 @@ const MessagesPage: React.FC = () => {
         setEmailFrom(emailAccounts[0].email);
       }
     }
-    fetchMessages(convId);
+    fetchMessages(convId, conversation.platform);
   };
 
   const handleBackToList = () => {
@@ -486,7 +649,6 @@ const MessagesPage: React.FC = () => {
     setEmailSubject('');
     setEmailTo('');
     setEmailFrom('');
-    fetchConversations(); // Refresh to update unread counts
   };
 
   // Send email from the "Compose New Email" modal (ad-hoc email)
@@ -570,7 +732,7 @@ const MessagesPage: React.FC = () => {
   };
 
   const filteredConversations = conversations.filter(conversation => {
-    const platformMatch = activePlatform === 'all' || conversation.platform === activePlatform;
+    const platformMatch = conversation.platform === activePlatform;
     const prospect = conversation.prospect || conversation.prospects;
     const linkedinData = prospect?.linkedinData || prospect?.linkedin_data;
     const searchMatch = 
@@ -669,16 +831,6 @@ const MessagesPage: React.FC = () => {
               {activeTab === 'conversations' && (
                 <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
                   <button
-                    onClick={() => setActivePlatform('all')}
-                    className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                      activePlatform === 'all'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
                     onClick={() => setActivePlatform('linkedin')}
                     className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md text-sm font-medium transition-colors ${
                       activePlatform === 'linkedin'
@@ -717,7 +869,7 @@ const MessagesPage: React.FC = () => {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto max-h-[calc(100vh-280px)]">
               {activeTab === 'conversations' ? 
                 filteredConversations.length === 0 ? (
                 <div className="p-8 text-center">
@@ -937,7 +1089,7 @@ const MessagesPage: React.FC = () => {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[calc(100vh-320px)]">
                   {messagesLoading ? (
                     <div className="flex items-center justify-center h-32">
                       <Loader2 className="w-6 h-6 animate-spin text-blue-600" />

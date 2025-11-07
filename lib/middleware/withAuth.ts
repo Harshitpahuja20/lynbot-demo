@@ -29,7 +29,7 @@ export function withAuth(handler: AuthenticatedHandler) {
       try {
         decoded = jwt.verify(token, JWT_SECRET) as any;
       } catch (jwtError) {
-        console.error('JWT verification failed:', jwtError);
+        console.error('JWT verification failed2:', jwtError);
         return res.status(401).json({ 
           success: false,
           error: 'Invalid or expired token.' 

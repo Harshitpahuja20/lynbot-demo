@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getCurrentUser, setToken } from '../utils/auth';
-import { useWebSocket } from '../contexts/WebSocketContext';
 import { 
   CheckCircle, 
   ArrowRight, 
@@ -9,14 +8,11 @@ import {
   MessageSquare, 
   BarChart3,
   Key,
-  Mail,
   Shield,
   Eye,
   EyeOff,
   Loader2,
-  AlertCircle,
-  Wifi,
-  WifiOff
+  AlertCircle
 } from 'lucide-react';
 
 interface OnboardingStep {
@@ -26,10 +22,7 @@ interface OnboardingStep {
   icon: React.ReactNode;
 }
 
-interface LinkedInAccount {
-  email: string;
-  password: string;
-}
+
 
 const OnboardingPage: React.FC = () => {
   const router = useRouter();
@@ -37,23 +30,18 @@ const OnboardingPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [linkedinAccount, setLinkedinAccount] = useState<LinkedInAccount>({
-    email: '',
-    password: ''
-  });
   const [openaiApiKey, setOpenaiApiKey] = useState('');
-  const [showLinkedinPassword, setShowLinkedinPassword] = useState(false);
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
-  const { socket, isConnected: wsConnected, emit } = useWebSocket();
   const [linkedinStatus, setLinkedinStatus] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [linkedinVerified, setLinkedinVerified] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [verificationType, setVerificationType] = useState<string | null>(null);
+  const [linkedinEmail, setLinkedinEmail] = useState('');
+  const [linkedinPassword, setLinkedinPassword] = useState('');
+  const [showLinkedinPassword, setShowLinkedinPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
-  const [showVerificationInput, setShowVerificationInput] = useState(false);
-  const [isWaitingForApp, setIsWaitingForApp] = useState(false);
-  const [sessionData, setSessionData] = useState<any>(null);
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [pendingAccountId, setPendingAccountId] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -73,85 +61,7 @@ const OnboardingPage: React.FC = () => {
     }
   }, [user, router, mounted]);
 
-  useEffect(() => {
-    if (!mounted || !socket) return;
-
-    socket.on('loginStatus', (statusData) => {
-      setLinkedinStatus(statusData.message);
-    });
-
-    socket.on('login', (result) => {
-      setIsVerifying(false);
-      setIsWaitingForApp(false);
-      
-      if (result.success) {
-        setLinkedinVerified(true);
-        setLinkedinStatus('LinkedIn login successful!');
-        setError('');
-        setShowVerificationInput(false);
-        if (result.sessionData) {
-          setSessionData(result.sessionData);
-          // Store LinkedIn account with session data immediately
-          saveLinkedInAccountWithSession(result.sessionData);
-        }
-      } else {
-        setLinkedinVerified(false);
-        setVerificationType(result.type || null);
-        
-        if (result.type === 'email_verification') {
-          setShowVerificationInput(true);
-          setLinkedinStatus('Email verification required - Enter the code from your email');
-        } else if (result.type === 'app_verification_timeout') {
-          setLinkedinStatus('App verification timeout after 5 minutes - Click "Retry" to try again');
-        } else if (result.type === 'captcha_failed') {
-          setLinkedinStatus('CAPTCHA solving failed - Please try again');
-        } else {
-          setError(result.message || 'LinkedIn login failed');
-          setLinkedinStatus('Login failed');
-        }
-      }
-    });
-
-    socket.on('loginStatus', (statusData) => {
-      if (statusData.type === 'app_verification') {
-        setIsWaitingForApp(true);
-        setIsVerifying(false);
-      } else if (statusData.type === 'waiting') {
-        setIsWaitingForApp(true);
-      } else if (statusData.type === 'success') {
-        setIsWaitingForApp(false);
-        setLinkedinVerified(true);
-        if (statusData.sessionData) {
-          setSessionData(statusData.sessionData);
-          // Store LinkedIn account with session data immediately
-          saveLinkedInAccountWithSession(statusData.sessionData);
-        }
-      }
-      setLinkedinStatus(statusData.message);
-    });
-
-    socket.on('verificationResult', (result) => {
-      if (result.success) {
-        setLinkedinVerified(true);
-        setLinkedinStatus('Verification successful!');
-        setShowVerificationInput(false);
-        setError('');
-        if (result.sessionData) {
-          setSessionData(result.sessionData);
-          // Store LinkedIn account with session data immediately
-          saveLinkedInAccountWithSession(result.sessionData);
-        }
-      } else {
-        setError(result.message || 'Verification failed');
-      }
-    });
-
-    return () => {
-      socket.off('loginStatus');
-      socket.off('login');
-      socket.off('verificationResult');
-    };
-  }, [mounted, socket]);
+  // WebSocket listeners removed - now using Unipile OAuth
 
   const steps: OnboardingStep[] = [
     {
@@ -186,48 +96,13 @@ const OnboardingPage: React.FC = () => {
     }
   ];
 
-  const verifyLinkedInCredentials = async () => {
-    if (!socket || !wsConnected) {
-      setError('Not connected to LinkedIn service');
-      return;
-    }
-
-    setIsVerifying(true);
-    setError('');
-    setLinkedinStatus('Starting LinkedIn verification...');
-    setShowVerificationInput(false);
-    
-    emit('login', {
-      email: linkedinAccount.email,
-      password: linkedinAccount.password
-    });
-  };
-
-  const submitVerificationCode = () => {
-    if (!socket || !verificationCode.trim()) {
-      setError('Please enter verification code');
-      return;
-    }
-
-    emit('submitVerificationCode', {
-      code: verificationCode.trim()
-    });
-  };
+  // Removed WebSocket verification functions - now using Unipile OAuth
 
   const validateCurrentStep = () => {
     switch (currentStep) {
       case 1: // LinkedIn Account Setup
-        if (!linkedinAccount.email || !linkedinAccount.password) {
-          setError('Please provide both LinkedIn email and password');
-          return false;
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(linkedinAccount.email)) {
-          setError('Please enter a valid email address');
-          return false;
-        }
         if (!linkedinVerified) {
-          setError('Please verify your LinkedIn credentials first');
+          setError('Please connect your LinkedIn account');
           return false;
         }
         break;
@@ -260,57 +135,7 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
-  const saveLinkedInAccountWithSession = async (sessionData: any) => {
-    if (!sessionData?.sessionToken) {
-      console.log('No session token to save');
-      return;
-    }
-
-    // Use credentials from WebSocket response
-    const linkedinEmail = sessionData.email;
-    const linkedinPassword = sessionData.password;
-
-    console.log('Attempting to save LinkedIn account:', {
-      email: linkedinEmail,
-      hasPassword: !!linkedinPassword,
-      hasSessionToken: !!sessionData.sessionToken
-    });
-
-    // Ensure we have valid credentials from WebSocket
-    if (!linkedinEmail || !linkedinPassword) {
-      console.log('❌ Missing LinkedIn credentials from WebSocket response');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/user/linkedin-account', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: linkedinEmail,
-          password: linkedinPassword,
-          sessionToken: sessionData.sessionToken
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        console.error('❌ Failed to save LinkedIn account:', data.error);
-      } else {
-        console.log('✅ LinkedIn account saved successfully with session!');
-      }
-    } catch (error) {
-      console.error('❌ Error saving LinkedIn account:', error);
-    }
-  };
-
-  const saveLinkedInAccount = async () => {
-    // This is now handled automatically when session is obtained
-    return Promise.resolve();
-  };
+  // LinkedIn account is saved automatically via Unipile callback
 
   const saveOpenAIKey = async () => {
     const response = await fetch('/api/user/openai-key', {
@@ -335,11 +160,7 @@ const OnboardingPage: React.FC = () => {
     setError('');
 
     try {
-      // Save LinkedIn account and OpenAI key before completing onboarding
-      if (linkedinAccount.email && linkedinAccount.password) {
-        await saveLinkedInAccount();
-      }
-      
+      // Save OpenAI key before completing onboarding
       if (openaiApiKey) {
         await saveOpenAIKey();
       }
@@ -409,53 +230,7 @@ const OnboardingPage: React.FC = () => {
     );
   }
 
-  // Loading state during LinkedIn verification
-  if (isVerifying && !isWaitingForApp && !showVerificationInput) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-6" />
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">Verifying LinkedIn Account</h2>
-            <p className="text-gray-600 mb-4">{linkedinStatus || 'Connecting to LinkedIn...'}</p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-blue-800 text-sm">
-                <strong>Please wait:</strong> We're securely verifying your LinkedIn credentials. This may take a few moments.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Loading state during app verification wait
-  if (isWaitingForApp) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="mb-6">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-yellow-600" />
-              </div>
-              <Loader2 className="w-8 h-8 animate-spin text-yellow-600 mx-auto" />
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">Waiting for App Verification</h2>
-            <p className="text-gray-600 mb-4">{linkedinStatus}</p>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-yellow-800 text-sm">
-                <strong>Action Required:</strong> Please check your LinkedIn mobile app and tap "Yes" to approve the login.
-              </p>
-            </div>
-            <div className="text-xs text-gray-500">
-              This process may take up to 5 minutes. Please keep this page open.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Removed WebSocket loading states
 
   // Loading state during onboarding completion
   if (loading) {
@@ -532,33 +307,27 @@ const OnboardingPage: React.FC = () => {
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <p className="text-yellow-800 text-sm">
                   <strong>Security Note:</strong> Your LinkedIn credentials are encrypted and stored securely. 
-                  We recommend using a dedicated LinkedIn account for automation.
+                  We'll use these for automation via Unipile API.
                 </p>
               </div>
               
-              {/* WebSocket Status */}
-              <div className={`flex items-center gap-2 p-2 rounded-md text-sm ${
-                wsConnected ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-              }`}>
-                {wsConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                {wsConnected ? 'Connected to LinkedIn service' : 'Disconnected from service'}
-              </div>
-              
+              {/* LinkedIn Email Input */}
               <div>
                 <label htmlFor="linkedin-email" className="block text-sm font-medium text-gray-700 mb-1">
-                  LinkedIn Email Address
+                  LinkedIn Email
                 </label>
                 <input
                   id="linkedin-email"
                   type="email"
-                  value={linkedinAccount.email}
-                  onChange={(e) => setLinkedinAccount(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={linkedinEmail}
+                  onChange={(e) => setLinkedinEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="your-linkedin@email.com"
-                  disabled={isVerifying}
+                  disabled={linkedinVerified}
                 />
               </div>
-              
+
+              {/* LinkedIn Password Input */}
               <div>
                 <label htmlFor="linkedin-password" className="block text-sm font-medium text-gray-700 mb-1">
                   LinkedIn Password
@@ -567,93 +336,280 @@ const OnboardingPage: React.FC = () => {
                   <input
                     id="linkedin-password"
                     type={showLinkedinPassword ? 'text' : 'password'}
-                    value={linkedinAccount.password}
-                    onChange={(e) => setLinkedinAccount(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={linkedinPassword}
+                    onChange={(e) => setLinkedinPassword(e.target.value)}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Your LinkedIn password"
-                    disabled={isVerifying}
+                    disabled={linkedinVerified}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowLinkedinPassword(!showLinkedinPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
-                    {showLinkedinPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
+                    {showLinkedinPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                   </button>
                 </div>
               </div>
 
-              {/* Verify Button */}
-              <button
-                onClick={verifyLinkedInCredentials}
-                disabled={!linkedinAccount.email || !linkedinAccount.password || (isVerifying && !isWaitingForApp) || !wsConnected}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isVerifying && !isWaitingForApp ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : linkedinVerified ? (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Verified
-                  </>
-                ) : verificationType === 'app_verification_timeout' ? (
-                  'Retry Verification'
-                ) : (
-                  'Verify LinkedIn Credentials'
-                )}
-              </button>
-
               {/* Verification Code Input */}
-              {showVerificationInput && (
-                <div className="space-y-3">
-                  <div>
-                    <label htmlFor="verification-code" className="block text-sm font-medium text-gray-700 mb-1">
-                      Verification Code
-                    </label>
-                    <input
-                      id="verification-code"
-                      type="text"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter 6-digit code"
-                      maxLength={6}
-                    />
-                  </div>
-                  <button
-                    onClick={submitVerificationCode}
-                    disabled={!verificationCode.trim()}
-                    className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Submit Code
-                  </button>
+              {showCodeInput && (
+                <div>
+                  <label htmlFor="verification-code" className="block text-sm font-medium text-gray-700 mb-1">
+                    Verification Code
+                  </label>
+                  <input
+                    id="verification-code"
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter verification code"
+                  />
                 </div>
               )}
 
+              {/* Connect Button */}
+              <button
+                onClick={async () => {
+                  // Handle verification code submission
+                  if (showCodeInput && verificationCode) {
+                    setIsVerifying(true);
+                    setError('');
+                    try {
+                      const token = sessionStorage.getItem('token');
+                      const response = await fetch('/api/unipile/verify-code', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          account_id: pendingAccountId,
+                          code: verificationCode
+                        })
+                      });
+                      const data = await response.json();
+                      
+                      if (data.success && !data.data?.error) {
+                        await fetch('/api/user/linkedin-account', {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            email: linkedinEmail,
+                            password: linkedinPassword,
+                            useUnipile: true,
+                            unipile_account_id: pendingAccountId
+                          })
+                        });
+                        
+                        setLinkedinVerified(true);
+                        setLinkedinStatus('✅ LinkedIn connected successfully!');
+                        setShowCodeInput(false);
+                        setIsVerifying(false);
+                        setTimeout(() => setCurrentStep(currentStep + 1), 1000);
+                      } else {
+                        throw new Error(data.error || 'Invalid verification code');
+                      }
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Verification failed');
+                      setIsVerifying(false);
+                    }
+                    return;
+                  }
+                  
+                  // Original connect logic
+                  if (!linkedinEmail || !linkedinPassword) {
+                    setError('Please enter both email and password');
+                    return;
+                  }
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (!emailRegex.test(linkedinEmail)) {
+                    setError('Please enter a valid email address');
+                    return;
+                  }
+
+                  setIsVerifying(true);
+                  setError('');
+                  setLinkedinStatus('Connecting to LinkedIn via Unipile...');
+                  try {
+                    const token = sessionStorage.getItem('token');
+
+                    // Connect to Unipile with credentials
+                    const unipileResponse = await fetch('/api/unipile/connect', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        username: linkedinEmail,
+                        password: linkedinPassword
+                      })
+                    });
+                    const unipileData = await unipileResponse.json();
+                    
+                    // Check for Unipile error response
+                    if (unipileData.data?.status === 401 || unipileData.data?.type === 'errors/invalid_credentials') {
+                      throw new Error(unipileData.data?.title || 'Invalid LinkedIn credentials');
+                    }
+                    
+                    // Check for checkpoint
+                    if (unipileData.success && unipileData.data?.object === 'Checkpoint') {
+                      const checkpointType = unipileData.data?.checkpoint?.type;
+                      const accountId = unipileData.data?.account_id;
+                      
+                      // Handle OTP verification checkpoint
+                      if (checkpointType === 'OTP' && accountId) {
+                        setPendingAccountId(accountId);
+                        setShowCodeInput(true);
+                        setLinkedinStatus('⚠️ LinkedIn requires a verification code. Please check your email or phone.');
+                        setIsVerifying(false);
+                        return;
+                      }
+                      
+                      // Handle in-app validation checkpoint
+                      if (checkpointType === 'IN_APP_VALIDATION' && accountId) {
+                        const accountId = unipileData.data.account_id;
+                        
+                        setLinkedinStatus('⚠️ LinkedIn requires verification! Please check your LinkedIn mobile app and approve the login request.\n\nWaiting for approval...');
+                        
+                        // Poll for account status
+                        const pollInterval = setInterval(async () => {
+                          try {
+                            const statusResponse = await fetch(`/api/unipile/account/${accountId}`, {
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            const statusData = await statusResponse.json();
+
+                            console.log(`statusData ${JSON.stringify(statusData)}`);
+                            
+                            const sourceStatus = statusData.data?.sources?.[0]?.status;
+                            if (sourceStatus === 'OK') {
+                              clearInterval(pollInterval);
+                              
+                              // Save credentials + connected account_id
+                              await fetch('/api/user/linkedin-account', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${token}`,
+                                  'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                  email: linkedinEmail,
+                                  password: linkedinPassword,
+                                  useUnipile: true,
+                                  unipile_account_id: accountId
+                                })
+                              });
+                              
+                              setLinkedinVerified(true);
+                              setLinkedinStatus('✅ LinkedIn connected successfully!');
+                              setIsVerifying(false);
+                              
+                              // Auto-advance to next step after 1 second
+                              setTimeout(() => {
+                                setCurrentStep(currentStep + 1);
+                              }, 1000);
+                            } else if (sourceStatus === 'ERROR' || sourceStatus === 'FAILED') {
+                              clearInterval(pollInterval);
+                              setError('Connection failed. Please try again.');
+                              setLinkedinStatus('');
+                              setIsVerifying(false);
+                            }
+                          } catch (err) {
+                            console.error('Poll error:', err);
+                          }
+                        }, 5000);
+                        
+                        // Timeout after 2 minutes
+                        setTimeout(() => {
+                          clearInterval(pollInterval);
+                          if (!linkedinVerified) {
+                            setError('Verification timeout. Please try again.');
+                            setLinkedinStatus('');
+                            setIsVerifying(false);
+                          }
+                        }, 120000);
+                        
+                        return;
+                      }
+                    }
+                    
+                    if (unipileData.success && unipileData.data?.id) {
+                      // Save credentials + Unipile account_id in one call
+                      await fetch('/api/user/linkedin-account', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          email: linkedinEmail,
+                          password: linkedinPassword,
+                          useUnipile: true,
+                          unipile_account_id: unipileData.data.id
+                        })
+                      });
+                      
+                      setLinkedinVerified(true);
+                      setLinkedinStatus('✅ LinkedIn connected successfully!');
+                      setIsVerifying(false);
+                      
+                      // Auto-advance to next step after 1 second
+                      setTimeout(() => {
+                        setCurrentStep(currentStep + 1);
+                      }, 1000);
+                    } else {
+                      throw new Error(unipileData.data?.title || unipileData.error || 'Failed to connect to Unipile');
+                    }
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to connect');
+                    setLinkedinStatus('');
+                    setIsVerifying(false);
+                  }
+                }}
+                disabled={isVerifying || linkedinVerified || (showCodeInput ? !verificationCode : (!linkedinEmail || !linkedinPassword))}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {showCodeInput ? 'Verifying...' : 'Connecting...'}
+                  </>
+                ) : linkedinVerified ? (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    LinkedIn Connected
+                  </>
+                ) : showCodeInput ? (
+                  <>
+                    <Key className="w-5 h-5" />
+                    Verify Code
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-5 h-5" />
+                    Connect LinkedIn Account
+                  </>
+                )}
+              </button>
+
               {/* Status Display */}
-              {linkedinStatus && !isWaitingForApp && (
+              {linkedinStatus && (
                 <div className={`p-3 rounded-md text-sm ${
                   linkedinVerified ? 'bg-green-50 text-green-700' : 
-                  verificationType === 'email_verification' ? 'bg-blue-50 text-blue-700' :
-                  verificationType === 'captcha_failed' ? 'bg-red-50 text-red-700' :
-                  'bg-gray-50 text-gray-700'
+                  linkedinStatus.includes('⚠️') ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                  'bg-blue-50 text-blue-700'
                 }`}>
                   <div className="flex items-center gap-2">
                     {linkedinVerified && <CheckCircle className="w-4 h-4" />}
-                    {linkedinStatus}
+                    {linkedinStatus.includes('⚠️') && <AlertCircle className="w-4 h-4" />}
+                    <span className="whitespace-pre-line">{linkedinStatus}</span>
                   </div>
-                  {verificationType === 'app_verification_timeout' && (
-                    <div className="mt-2 text-xs text-orange-600">
-                      The verification timed out. You can try again by clicking the "Retry Verification" button above.
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -747,7 +703,7 @@ const OnboardingPage: React.FC = () => {
           <div className="flex justify-center">
             <button
               onClick={handleNext}
-              disabled={loading || (currentStep === 1 && !linkedinVerified) || isVerifying || isWaitingForApp}
+              disabled={loading || (currentStep === 1 && !linkedinVerified) || isVerifying}
               className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (

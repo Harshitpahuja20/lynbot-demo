@@ -727,10 +727,12 @@ const SettingsPage: React.FC = () => {
                             <div className="flex items-center">
                               <Linkedin className="h-5 w-5 text-blue-600 mr-3" />
                               <div>
-                                <p className="text-sm font-medium text-gray-900">{account.email}</p>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {account.email || (account.unipile_account_id ? 'Unipile Account' : 'LinkedIn Account')}
+                                </p>
                                 <p className="text-xs text-gray-500">
                                   {account.isActive ? 'Active' : 'Inactive'} • 
-                                  {account.hasPassword ? ' Password configured' : ' No password'}
+                                  {account.provider === 'unipile' ? 'Connected via Unipile' : 'Direct connection'}
                                 </p>
                               </div>
                             </div>
@@ -745,69 +747,99 @@ const SettingsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Add/Update LinkedIn Account */}
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  {/* Unipile Connection (Recommended) */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <Shield className="h-4 w-4 text-yellow-600" />
-                      <span className="text-sm font-medium text-yellow-800">Security Notice</span>
+                      <Shield className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Recommended: Connect via Unipile</span>
                     </div>
-                    <p className="text-sm text-yellow-700">
-                      Your LinkedIn credentials are encrypted and stored securely. We recommend using a dedicated LinkedIn account for automation to protect your primary account.
+                    <p className="text-sm text-blue-700 mb-3">
+                      Unipile provides secure OAuth authentication without storing your LinkedIn password. This is the safest and most reliable method.
                     </p>
+                    <button
+                      onClick={async () => {
+                        setSaving(true);
+                        setError('');
+                        try {
+                          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+                          const response = await fetch('/api/unipile/connect', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json'
+                            }
+                          });
+                          const data = await response.json();
+                          if (data.success && data.data.hosted_auth_url) {
+                            window.open(data.data.hosted_auth_url, '_blank', 'width=600,height=700');
+                            setSuccess('Please complete authentication in the popup window');
+                          } else {
+                            throw new Error(data.error || 'Failed to initiate connection');
+                          }
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : 'Failed to connect');
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      disabled={saving}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                    >
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Linkedin className="w-4 h-4 mr-2" />}
+                      Connect LinkedIn via Unipile
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        LinkedIn Email
-                      </label>
-                      <input
-                        type="email"
-                        value={linkedinForm.email}
-                        onChange={(e) => setLinkedinForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="your-linkedin@email.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        LinkedIn Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPasswords.linkedin ? 'text' : 'password'}
-                          value={linkedinForm.password}
-                          onChange={(e) => setLinkedinForm(prev => ({ ...prev, password: e.target.value }))}
-                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Your LinkedIn password"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswords(prev => ({ ...prev, linkedin: !prev.linkedin }))}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        >
-                          {showPasswords.linkedin ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </button>
+                  {/* Legacy Method */}
+                  <details className="border border-gray-200 rounded-lg p-4">
+                    <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">Advanced: Direct Connection (Legacy)</summary>
+                    <div className="mt-4 space-y-4">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p className="text-xs text-yellow-700">
+                          This method stores encrypted credentials. Use only if Unipile connection fails.
+                        </p>
                       </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn Email</label>
+                          <input
+                            type="email"
+                            value={linkedinForm.email}
+                            onChange={(e) => setLinkedinForm(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="your-linkedin@email.com"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn Password</label>
+                          <div className="relative">
+                            <input
+                              type={showPasswords.linkedin ? 'text' : 'password'}
+                              value={linkedinForm.password}
+                              onChange={(e) => setLinkedinForm(prev => ({ ...prev, password: e.target.value }))}
+                              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Your LinkedIn password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPasswords(prev => ({ ...prev, linkedin: !prev.linkedin }))}
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            >
+                              {showPasswords.linkedin ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleSaveLinkedInAccount}
+                        disabled={saving}
+                        className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:opacity-50 flex items-center"
+                      >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        Save Direct Connection
+                      </button>
                     </div>
-                  </div>
-
-                  <button
-                    onClick={handleSaveLinkedInAccount}
-                    disabled={saving}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
-                  >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-2" />
-                    )}
-                    Save LinkedIn Account
-                  </button>
+                  </details>
                 </div>
               </div>
             )}

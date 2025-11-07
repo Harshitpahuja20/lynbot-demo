@@ -52,8 +52,8 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       activities.push({
         id: prospect.id,
         type: 'connection',
-        description: `Connection request sent to ${prospect.linkedin_data.name}`,
-        timestamp: prospect.automation.connectionRequestDate || prospect.created_at
+        description: `Connection request sent to ${prospect.linkedin_data?.name || 'prospect'}`,
+        timestamp: (prospect as any).automation?.connectionRequestDate || prospect.created_at
       });
     });
     

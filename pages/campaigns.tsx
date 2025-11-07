@@ -22,7 +22,9 @@ import {
   ExternalLink,
   Copy,
   MoreVertical,
-  EyeIcon
+  EyeIcon,
+  MapPin,
+  BadgeCheck
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -137,6 +139,9 @@ const CampaignsPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedResultUrls, setSelectedResultUrls] = useState<string[]>([]);
   const [savingResults, setSavingResults] = useState(false);
+  const [searchLimit, setSearchLimit] = useState(10);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [campaignToRun, setCampaignToRun] = useState<Campaign | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<any>(null);
   const [generatedMessage, setGeneratedMessage] = useState('');
@@ -373,19 +378,23 @@ const CampaignsPage: React.FC = () => {
 
       const token = localStorage.getItem('token');
 
-      // Prepare payload for bulk endpoint
+      // Prepare payload for bulk endpoint - save complete object
       const prospectsPayload = selectedProspects.map((p: any) => ({
         campaignId: p?.campaignId || '',
         linkedinData: {
+          ...p,
           profileUrl: p.profileUrl,
           name: p.name,
-          title: p.title || '',
+          title: p.headline || p.title || '',
           company: p.company || '',
           location: p.location || '',
           industry: p.industry || '',
           profileImageUrl: p.photoUrl || p.photoURL || '',
           mutualsText: p.mutualsText || '',
-          memberUrn: p.memberUrn || p.memberUrnStr || ''
+          memberUrn: p.member_urn || p.memberUrn || p.memberUrnStr || '',
+          publicIdentifier: p.public_identifier || p.publicIdentifier || '',
+          networkDistance: p.network_distance || p.networkDistance || '',
+          verified: p.verified || false
         },
         contactInfo: {}
       }));
@@ -694,39 +703,31 @@ const CampaignsPage: React.FC = () => {
   const handleSendMessage = async () => {
     if (!selectedProspect || !generatedMessage) return;
     
-    if (socket && wsConnected) {
-      emit('sendMessage', {
-        prospect: selectedProspect,
-        message: generatedMessage
+    try {
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospect_id: selectedProspect.id,
+          content: generatedMessage,
+          platform: 'linkedin',
+          message_type: 'manual'
+        })
       });
-      setShowMessageModal(false);
-      setSelectedProspect(null);
-      setGeneratedMessage('');
-      setError('✅ Message sent successfully!');
-    } else {
-      // Fallback to API
-      try {
-        const response = await fetch('/api/messages', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            prospectId: selectedProspect.id,
-            message: generatedMessage
-          })
-        });
-        const data = await response.json();
-        if (data.success) {
-          setShowMessageModal(false);
-          setSelectedProspect(null);
-          setGeneratedMessage('');
-          setError('✅ Message sent successfully!');
-        }
-      } catch (err) {
-        setError('Failed to send message');
+      const data = await response.json();
+      if (data.success) {
+        setShowMessageModal(false);
+        setSelectedProspect(null);
+        setGeneratedMessage('');
+        setError('✅ Message sent successfully!');
+      } else {
+        setError('❌ Failed to send message');
       }
+    } catch (err) {
+      setError('❌ Failed to send message');
     }
   };
 
@@ -735,61 +736,116 @@ const CampaignsPage: React.FC = () => {
       setError('⏳ Another search is already in progress. Please wait...');
       return;
     }
+    
+    // Show limit modal first
+    setCampaignToRun(campaign);
+    setShowLimitModal(true);
+  };
+  
+  const executeSearch = async () => {
+    if (!campaignToRun) return;
+    
+    setShowLimitModal(false);
 
-    const hasSalesNavigator = campaign.salesNavigatorCriteria && Object.keys(campaign.salesNavigatorCriteria).some(key => campaign.salesNavigatorCriteria[key]);
-    
-    if (socket && wsConnected) {
-      // Use WebSocket for real-time updates
-      const filters = {
-        searchType: hasSalesNavigator ? 'salesNavigator' : 'standard',
-        campaignId: campaign.id,
-        ...(hasSalesNavigator ? {
-          currentCompany: campaign.salesNavigatorCriteria?.company || campaign.salesNavigatorCriteria?.currentCompany || '',
-          companySize: campaign.salesNavigatorCriteria?.companyHeadcount || '',
-          jobTitle: campaign.salesNavigatorCriteria?.currentJobTitle || '',
-          location: campaign.salesNavigatorCriteria?.geography || '',
-          industry: campaign.salesNavigatorCriteria?.industry || ''
-        } : {
-          keywords: campaign.searchCriteria?.keywords || '',
-          location: campaign.searchCriteria?.location || '',
-          company: campaign.searchCriteria?.currentCompany || '',
-          title: campaign.searchCriteria?.title || ''
-        }),
-        maxResults: 25
-      };
+    setSearchLoading(true);
+    setSearchStatus('Starting LinkedIn search via Unipile...');
+    setError('');
+
+    try {
+      // Get user's Unipile account ID
+      const profileResponse = await fetch('/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
-      console.log('WebSocket search filters:', filters);
-      emit('search', { filters });
-    } else {
-      // Fallback to API
-      runWithAPI();
-    }
-    
-    function runWithAPI() {
-      setActionLoading(true);
-      setError('🎯 Starting campaign search...');
+      if (!profileResponse.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
       
-      fetch(`/api/campaigns/${campaign.id}/search-prospects`, {
+      const profileData = await profileResponse.json();
+      const accountId = profileData.user?.unipile_account_id;
+      
+      if (!accountId) {
+        throw new Error('LinkedIn account not connected via Unipile');
+      }
+
+      setSearchStatus('Searching LinkedIn profiles...');
+
+      // Determine if using Sales Navigator
+      const useSalesNav = campaignToRun.salesNavigatorCriteria && Object.keys(campaignToRun.salesNavigatorCriteria).some(key => campaignToRun.salesNavigatorCriteria[key]);
+
+      // Call Unipile search API
+      const searchResponse = await fetch('/api/unipile/search', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          keywords: campaignToRun.searchCriteria?.keywords || '',
+          location: campaignToRun.searchCriteria?.location || '',
+          limit: searchLimit,
+          api: useSalesNav ? 'sales_navigator' : undefined,
+          category: useSalesNav ? 'people' : undefined,
+          salesNavigatorCriteria: useSalesNav ? campaignToRun.salesNavigatorCriteria : undefined
+        })
+      });
+
+      if (!searchResponse.ok) {
+        throw new Error('LinkedIn search failed');
+      }
+
+      const searchData = await searchResponse.json();
+      
+      if (searchData.success && searchData.data?.items) {
+        // Store complete Unipile results
+        const results = searchData.data.items.map((item: any) => ({
+          ...item,
+          name: item.name,
+          headline: item.headline,
+          location: item.location,
+          profileUrl: item.profile_url || item.public_profile_url,
+          photoUrl: item.profile_picture_url_large || item.profile_picture_url,
+          campaignId: campaignToRun.id
+        }));
+        
+        setSearchResults(results);
+        setShowResultsModal(true);
+        setError(`✅ Search completed! Found ${results.length} prospects.`);
+        
+        // Save search results to database
+        try {
+          await fetch('/api/campaigns/search-results', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              campaignId: campaignToRun.id,
+              results: results,
+              totalResults: results.length
+            })
+          });
+        } catch (err) {
+          console.error('Failed to save search results:', err);
         }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          setError(`✅ Campaign completed! Found ${data.prospectsFound || 0} prospects.`);
-          fetchCampaigns();
-        } else {
-          setError(`❌ ${data.error || 'Failed to run campaign'}`);
+      } else {
+        if(['errors/feature_not_subscribed'].includes(searchData?.data?.type)) {
+        throw new Error('The requested feature has either not been subscribed or not been authenticated properly.');
+        }else{
+        throw new Error('No results found');
         }
-      })
-      .catch(err => {
-        console.error('API Error:', err);
-        setError('❌ Failed to run campaign');
-      })
-      .finally(() => setActionLoading(false));
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setError(`❌ ${err instanceof Error ? err.message : 'Search failed'}`);
+    } finally {
+      setSearchLoading(false);
+      setSearchStatus('');
+      setCampaignToRun(null);
     }
   };
 
@@ -1308,6 +1364,49 @@ const CampaignsPage: React.FC = () => {
           </div>
         )}
 
+        {/* Search Limit Modal */}
+        {showLimitModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Search Limit</h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    How many prospects do you want to search?
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={searchLimit}
+                    onChange={(e) => setSearchLimit(parseInt(e.target.value) || 10)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter number (1-100)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Maximum 100 prospects per search</p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowLimitModal(false);
+                      setCampaignToRun(null);
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={executeSearch}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search Results Modal */}
         {showResultsModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" style={{ display: showMessageModal ? 'block' : 'block' }}>
@@ -1344,28 +1443,39 @@ const CampaignsPage: React.FC = () => {
                             </label>
 
                             <div className="flex items-center gap-3">
-                              <div className="h-12 w-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
+                              <div className="h-16 w-16 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
                                 {prospect?.photoUrl ? (
                                   <img
                                     src={prospect.photoUrl}
                                     alt={prospect.name}
-                                    className="h-12 w-12 object-cover"
+                                    className="h-16 w-16 object-cover"
                                   />
                                 ) : (
-                                  <Users className="h-8 w-8 text-gray-400 m-2" />
+                                  <Users className="h-10 w-10 text-gray-400 m-3" />
                                 )}
                               </div>
 
                               <div>
-                                <a
-                                  href={prospect?.profileUrl || '#'}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-medium text-gray-900 hover:underline"
-                                >
-                                  {prospect?.name || 'Unknown'}
-                                </a>
-                                <p className="text-sm text-gray-600 mt-1 max-w-xl">{prospect?.title || ''}</p>
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={prospect?.profileUrl || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-gray-900 hover:underline"
+                                  >
+                                    {prospect?.name || 'Unknown'}
+                                  </a>
+                                  {prospect?.verified && (
+                                    <BadgeCheck className="h-4 w-4 text-blue-600" />
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1 max-w-xl">{prospect?.headline || prospect?.title || ''}</p>
+                                {prospect?.location && (
+                                  <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
+                                    <MapPin className="h-3 w-3" />
+                                    <span>{prospect.location}</span>
+                                  </div>
+                                )}
 
                                 {/* Followers and mutuals line (compact) */}
                                 <p className="text-sm text-gray-500 mt-1">

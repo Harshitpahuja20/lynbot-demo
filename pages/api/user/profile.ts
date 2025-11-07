@@ -53,10 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         company: user.company,
         role: user.role,
         subscription: user.subscription || { plan: 'free', status: 'inactive' },
+        unipile_account_id: user.linkedin_accounts?.[0]?.unipile_account_id,
         linkedin_accounts: (user.linkedin_accounts || []).map((account: any) => ({
           email: account.email,
           isActive: account.isActive || false,
-          hasPassword: !!account.encryptedPassword
+          hasPassword: !!account.encryptedPassword,
+          unipile_account_id: account.unipile_account_id
         })),
         email_accounts: (user.email_accounts || []).map((account: any) => ({
           email: account.email,

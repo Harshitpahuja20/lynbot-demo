@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { getSupabaseAdminClient } from '../../../lib/supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:4000';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -28,8 +29,70 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const userId = decoded.id;
 
-    const { email, password, sessionToken } = req.body;
+    const { email, password, sessionToken, useUnipile, unipile_account_id } = req.body;
 
+    // Handle Unipile integration
+    if (useUnipile) {
+      if (!unipile_account_id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Unipile account ID required'
+        });
+      }
+
+      const supabase = getSupabaseAdminClient();
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (userError || !user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      const updatedLinkedInAccounts = [...(user.linkedin_accounts || [])];
+      const existingIndex = updatedLinkedInAccounts.findIndex(
+        (acc: any) => acc.unipile_account_id === unipile_account_id
+      );
+
+      const accountData = {
+        unipile_account_id,
+        provider: 'unipile',
+        isActive: true,
+        lastLogin: new Date().toISOString(),
+        accountHealth: {
+          status: 'healthy',
+          lastCheck: new Date().toISOString(),
+          restrictions: []
+        }
+      };
+
+      if (existingIndex >= 0) {
+        updatedLinkedInAccounts[existingIndex] = {
+          ...updatedLinkedInAccounts[existingIndex],
+          ...accountData
+        };
+      } else {
+        updatedLinkedInAccounts.push(accountData);
+      }
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ linkedin_accounts: updatedLinkedInAccounts })
+        .eq('id', userId);
+
+      if (updateError) {
+        throw new Error('Failed to save LinkedIn account');
+      }
+
+      return res.json({
+        success: true,
+        message: 'LinkedIn account connected via Unipile'
+      });
+    }
+
+    // Legacy: Handle email/password authentication
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -51,7 +114,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const encryptedPassword = await bcrypt.hash(password, salt);
     
     // Store session token as-is for LinkedIn automation
-    // Note: In production, consider additional security measures
     const rawSessionToken = sessionToken || null;
 
     // Find user and update LinkedIn account
