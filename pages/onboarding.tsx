@@ -176,7 +176,7 @@ const OnboardingPage: React.FC = () => {
       if (response.ok && response.status !== 304) {
         const data = await response.json();
         
-        // Update the token in NEXT_NEST_API_URLStorage with the new one that includes onboardingComplete: true
+        // Update the token in localStorage with the new one that includes onboardingComplete: true
         if (data.token) {
           setToken(data.token);
         }
