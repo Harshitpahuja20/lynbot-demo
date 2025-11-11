@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { AppProps } from 'next/app';
 import { supabase } from '../lib/supabase';
 import { WebSocketProvider } from '../contexts/WebSocketContext';
+import { ToastProvider } from '../contexts/ToastContext';
 import '../styles/globals.css';
 
 function TodosExample() {
@@ -62,10 +63,12 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   }
 
   return (
-    <WebSocketProvider>
-      <Component {...pageProps} />
-      {/* Uncomment the line below to test Supabase connection */}
-      {/* <TodosExample /> */}
-    </WebSocketProvider>
+    <ToastProvider>
+      <WebSocketProvider>
+        <Component {...pageProps} />
+        {/* Uncomment the line below to test Supabase connection */}
+        {/* <TodosExample /> */}
+      </WebSocketProvider>
+    </ToastProvider>
   );
 }

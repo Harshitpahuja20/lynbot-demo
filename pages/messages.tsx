@@ -426,9 +426,10 @@ const MessagesPage: React.FC = () => {
           conversation_id: chat.id,
           prospect: {
             linkedin_data: {
-              name: chat.attendees?.[0]?.display_name || 'Unknown',
-              profileImageUrl: chat.attendees?.[0]?.profile_picture_url,
-              profileUrl: chat.attendees?.[0]?.identifier
+              name: chat.attendee?.name || 'Unknown',
+              profileImageUrl: chat.attendee?.pictureUrl,
+              profileUrl: chat.attendee?.profileUrl,
+              company: chat.attendee?.occupation
             }
           },
           platform: 'linkedin' as const,

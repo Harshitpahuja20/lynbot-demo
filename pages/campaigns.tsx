@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useToast } from '../contexts/ToastContext';
 import { 
   Target, 
   Plus, 
@@ -147,6 +148,7 @@ const CampaignsPage: React.FC = () => {
   const [generatedMessage, setGeneratedMessage] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
   const { socket, isConnected: wsConnected, emit } = useWebSocket();
+  const { showToast } = useToast();
   const router = useRouter();
   
   // Form data for create/edit
@@ -883,33 +885,12 @@ const CampaignsPage: React.FC = () => {
     <Layout>
       <div className="space-y-6">
         {/* Status Messages */}
-        {searchLoading && searchStatus && (
+        {/* {searchLoading && searchStatus && (
           <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center gap-2">
             <Loader2 className="w-5 h-5 animate-spin" />
             {searchStatus}
           </div>
-        )}
-        
-        {error && (
-          <div className={`border px-4 py-3 rounded-lg flex items-center gap-2 ${
-            error.startsWith('✅') ? 'bg-green-50 border-green-200 text-green-700' :
-            error.startsWith('⚠️') ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
-            error.startsWith('🎯') || error.startsWith('⏳') ? 'bg-blue-50 border-blue-200 text-blue-700' :
-            'bg-red-50 border-red-200 text-red-700'
-          }`}>
-            {error.startsWith('✅') ? <CheckCircle className="w-5 h-5" /> :
-             error.startsWith('⚠️') ? <AlertCircle className="w-5 h-5" /> :
-             error.startsWith('🎯') || error.startsWith('⏳') ? <Loader2 className="w-5 h-5 animate-spin" /> :
-             <AlertCircle className="w-5 h-5" />}
-            {error}
-            <button
-              onClick={() => setError('')}
-              className="ml-auto hover:opacity-70"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        )} */}
 
         {/* Page Header */}
         <div className="flex justify-between items-center">
