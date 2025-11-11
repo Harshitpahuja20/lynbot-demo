@@ -14,6 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // ✅ 1. Check if user already exists
     const existingUser = await userOperations.findByEmail(email);
+    console.log(`existingUser ${JSON.stringify(existingUser)}`);
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -26,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Store in Redis with 5-minute TTL
     await redis.set(`otp:${email}`, otp, "EX", 300); // 300 seconds = 5 min
-
+    console.log(`Generated OTP for ${email}: ${otp}`);
+    console.log(`process.env.NEXT_PUBLIC_SMTP_USER ${process.env.NEXT_PUBLIC_SMTP_USER} process.env.NEXT_PUBLIC_SMTP_USER${process.env.NEXT_PUBLIC_SMTP_USER}`)
     // ✅ 3. Send OTP email
     const transporter = nodemailer.createTransport({
       service: "gmail",
