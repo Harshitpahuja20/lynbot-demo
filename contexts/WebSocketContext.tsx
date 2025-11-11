@@ -27,7 +27,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    const nestApiUrl = process.env.NEXT_PUBLIC_NEST_API_URL || 'https://lyncbot.testenvapp.com';
+    const nestApiUrl = process.env.NEXT_PUBLIC_NEST_API_URL || 'http://localhost:4000';
     console.log(`NEST API URL: ${nestApiUrl}`);
     const newSocket = io(nestApiUrl, {
       auth: {
