@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:4000';
+const NEST_API_URL = process.env.NEXT_NEST_API_URL || 'http://localhost:4000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!account_id) {
       return res.status(400).json({ success: false, error: 'Account ID required' });
     }
-
+    console.log(NEST_API_URL)
     const response = await fetch(`${NEST_API_URL}/unipile/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

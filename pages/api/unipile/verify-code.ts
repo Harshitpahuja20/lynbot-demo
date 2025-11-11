@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:4000';
+const NEST_API_URL = process.env.NEXT_NEST_API_URL || 'http://localhost:4000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

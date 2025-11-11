@@ -28,7 +28,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   useEffect(() => {
     const token = localStorage.getItem('token');
     
-    const newSocket = io('http://localhost:4000', {
+    const newSocket = io(process.env.NEXT_NEST_API_URL, {
       auth: {
         token: token || null
       }
