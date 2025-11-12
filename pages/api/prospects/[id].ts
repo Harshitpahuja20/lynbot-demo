@@ -1,6 +1,7 @@
 import { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
 import { prospectOperations } from '../../../lib/database';
+import { activityLogger } from '../../../lib/activity-logger';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 
@@ -71,6 +72,16 @@ async function handleUpdateProspect(req: AuthenticatedRequest, res: NextApiRespo
 
     console.log(`Prospect updated: ${prospect.linkedin_data.name}`);
 
+    // Log activity
+    await activityLogger.log({
+      userId,
+      activityType: 'prospect_updated',
+      entityType: 'prospect',
+      entityId: prospect.id,
+      entityName: prospect.linkedin_data.name,
+      description: `Prospect "${prospect.linkedin_data.name}" updated`
+    });
+
     res.json({
       success: true,
       message: 'Prospect updated successfully',
@@ -102,6 +113,16 @@ async function handleDeleteProspect(req: AuthenticatedRequest, res: NextApiRespo
     await prospectOperations.delete(id, userId);
 
     console.log(`Prospect deleted: ${prospect.linkedin_data.name}`);
+
+    // Log activity
+    await activityLogger.log({
+      userId,
+      activityType: 'prospect_deleted',
+      entityType: 'prospect',
+      entityId: prospect.id,
+      entityName: prospect.linkedin_data.name,
+      description: `Prospect "${prospect.linkedin_data.name}" deleted`
+    });
 
     res.json({
       success: true,

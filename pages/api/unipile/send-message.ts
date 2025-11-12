@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 import { messageOperations, prospectOperations } from '../../../lib/database';
+import { activityLogger } from '../../../lib/activity-logger';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const NEST_API_URL = process.env.NEXT_PUBLIC_NEST_API_URL || 'http://localhost:4000';
@@ -86,6 +87,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               ],
               status: 'message_sent',
               last_updated: new Date().toISOString()
+            });
+            
+            // Log activity
+            await activityLogger.log({
+              userId,
+              activityType: 'message_sent',
+              entityType: 'message',
+              entityId: data.message_id,
+              entityName: recipient_name || prospect.linkedin_data?.name,
+              description: `Message sent to ${recipient_name || prospect.linkedin_data?.name || 'prospect'}`
             });
           }
         } catch (prospectError) {

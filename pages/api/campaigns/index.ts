@@ -1,6 +1,7 @@
 import { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
 import { campaignOperations, userOperations } from '../../../lib/database';
+import { activityLogger } from '../../../lib/activity-logger';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 
@@ -22,10 +23,13 @@ async function handleGetCampaigns(req: AuthenticatedRequest, res: NextApiRespons
   try {
     const userId = req.user.id;
     
-    const [campaigns, user] = await Promise.all([
+    const [allCampaigns, user] = await Promise.all([
       campaignOperations.findByUserId(userId),
       userOperations.findById(userId)
     ]);
+
+    // Filter out archived campaigns
+    const campaigns = allCampaigns.filter(c => c.status !== 'archived');
 
     res.json({
       success: true,
@@ -51,8 +55,9 @@ async function handleCreateCampaign(req: AuthenticatedRequest, res: NextApiRespo
     // Check subscription limits
     const user = await userOperations.findById(userId);
     if (user?.subscription?.plan === 'free') {
-      const campaigns = await campaignOperations.findByUserId(userId);
-      const campaignCount = campaigns.length;
+      const allCampaigns = await campaignOperations.findByUserId(userId);
+      const activeCampaigns = allCampaigns.filter(c => c.status !== 'archived');
+      const campaignCount = activeCampaigns.length;
       if (campaignCount >= 1) {
         return res.status(403).json({ 
           success: false,
@@ -126,6 +131,16 @@ async function handleCreateCampaign(req: AuthenticatedRequest, res: NextApiRespo
     const campaign = await campaignOperations.create(campaignData);
 
     console.log(`New campaign created: ${campaign.name}`);
+
+    // Log activity
+    await activityLogger.log({
+      userId,
+      activityType: 'campaign_created',
+      entityType: 'campaign',
+      entityId: campaign.id,
+      entityName: campaign.name,
+      description: `Campaign "${campaign.name}" created`
+    });
 
     res.status(201).json({
       success: true,

@@ -3,6 +3,7 @@ import { withAuth, AuthenticatedRequest } from '../../../../lib/middleware/withA
 import { campaignOperations, prospectOperations, userOperations } from '../../../../lib/database';
 import { getSupabaseAdminClient } from '../../../../lib/supabase';
 import LinkedInService from '../../../../lib/services/linkedinService';
+import { activityLogger } from '../../../../lib/activity-logger';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -144,6 +145,17 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         results: prospects,
         total_results: prospects.length,
         status: 'completed'
+      });
+
+      // Log activity
+      await activityLogger.log({
+        userId,
+        activityType: 'prospects_found',
+        entityType: 'campaign',
+        entityId: campaignId as string,
+        entityName: campaign.name,
+        description: `Found ${prospects.length} prospects for "${campaign.name}" (${newProspects} new)`,
+        metadata: { totalFound: prospects.length, newProspects }
       });
 
       res.json({

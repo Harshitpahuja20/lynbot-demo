@@ -4,11 +4,16 @@ import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth
 import { userOperations } from '../../../lib/database';
 
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'your-encryption-secret-key-change-this';
-const ALGORITHM = 'aes-256-gcm';
+const ALGORITHM = 'aes-256-cbc';
+
+function getKey(): Buffer {
+  return crypto.createHash('sha256').update(ENCRYPTION_SECRET).digest();
+}
 
 function encrypt(text: string): string {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher(ALGORITHM, ENCRYPTION_SECRET);
+  const key = getKey();
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
   
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
@@ -20,8 +25,9 @@ function decrypt(encryptedText: string): string {
   const parts = encryptedText.split(':');
   const iv = Buffer.from(parts[0], 'hex');
   const encrypted = parts[1];
+  const key = getKey();
   
-  const decipher = crypto.createDecipher(ALGORITHM, ENCRYPTION_SECRET);
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');

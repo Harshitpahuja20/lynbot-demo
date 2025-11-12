@@ -71,19 +71,21 @@ const Dashboard: React.FC = () => {
       });
       
       if (statsResponse.ok) {
-        // Only parse JSON if status is not 304
         if (statsResponse.status !== 304) {
           const statsData = await statsResponse.json();
           if (statsData.success) {
             setStats(statsData.stats);
           }
-        } else {
-          // Handle 304: data is not modified, so current state is valid
-          console.log('Dashboard stats not modified (304). Using cached data.');
         }
       } else {
-        console.error('Failed to fetch dashboard stats:', statsResponse.status, await statsResponse.text());
-        setError('Failed to load dashboard stats.');
+        console.error('Failed to fetch dashboard stats:', statsResponse.status);
+        // Set default stats on error
+        setStats({
+          totalConnections: 0,
+          messagesSent: 0,
+          responseRate: 0,
+          activeCampaigns: 0
+        });
       }
       
       // Fetch recent activity
@@ -95,24 +97,27 @@ const Dashboard: React.FC = () => {
       });
       
       if (activityResponse.ok) {
-        // Only parse JSON if status is not 304
         if (activityResponse.status !== 304) {
           const activityData = await activityResponse.json();
           if (activityData.success) {
-            setRecentActivity(activityData.activities);
+            setRecentActivity(activityData.activities || []);
           }
-        } else {
-          // Handle 304: data is not modified, so current state is valid
-          console.log('Recent activity not modified (304). Using cached data.');
         }
       } else {
-        console.error('Failed to fetch recent activity:', activityResponse.status, await activityResponse.text());
-        setError('Failed to load recent activity.');
+        console.error('Failed to fetch recent activity:', activityResponse.status);
+        setRecentActivity([]);
       }
       
     } catch (err) {
       console.error('Dashboard data fetch error:', err);
-      setError('Failed to load dashboard data. Please try refreshing the page.');
+      // Set defaults on error
+      setStats({
+        totalConnections: 0,
+        messagesSent: 0,
+        responseRate: 0,
+        activeCampaigns: 0
+      });
+      setRecentActivity([]);
     } finally {
       setLoading(false);
     }

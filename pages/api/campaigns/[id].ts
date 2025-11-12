@@ -1,6 +1,7 @@
 import { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest } from '../../../lib/middleware/withAuth';
 import { campaignOperations } from '../../../lib/database';
+import { activityLogger } from '../../../lib/activity-logger';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 
@@ -54,6 +55,7 @@ async function handleUpdateCampaign(req: AuthenticatedRequest, res: NextApiRespo
     const userId = req.user.id;
     const updates = req.body;
 
+    const oldCampaign = await campaignOperations.findById(id, userId);
     const campaign = await campaignOperations.update(id, userId, updates);
 
     if (!campaign) {
@@ -64,6 +66,30 @@ async function handleUpdateCampaign(req: AuthenticatedRequest, res: NextApiRespo
     }
 
     console.log(`Campaign updated: ${campaign.name}`);
+
+    // Log activity based on what changed
+    if (oldCampaign?.status !== campaign.status) {
+      const statusText = campaign.status === 'active' ? 'activated' : 
+                        campaign.status === 'paused' ? 'paused' : 
+                        campaign.status === 'completed' ? 'completed' : 'updated';
+      await activityLogger.log({
+        userId,
+        activityType: `campaign_${campaign.status}`,
+        entityType: 'campaign',
+        entityId: campaign.id,
+        entityName: campaign.name,
+        description: `Campaign "${campaign.name}" ${statusText}`
+      });
+    } else {
+      await activityLogger.log({
+        userId,
+        activityType: 'campaign_updated',
+        entityType: 'campaign',
+        entityId: campaign.id,
+        entityName: campaign.name,
+        description: `Campaign "${campaign.name}" updated`
+      });
+    }
 
     res.json({
       success: true,
@@ -93,9 +119,23 @@ async function handleDeleteCampaign(req: AuthenticatedRequest, res: NextApiRespo
       });
     }
 
-    await campaignOperations.delete(id, userId);
+    // Soft delete: archive instead of delete
+    await campaignOperations.update(id, userId, { 
+      status: 'archived',
+      is_active: false 
+    });
 
-    console.log(`Campaign deleted: ${campaign.name}`);
+    console.log(`Campaign archived: ${campaign.name}`);
+
+    // Log activity
+    await activityLogger.log({
+      userId,
+      activityType: 'campaign_deleted',
+      entityType: 'campaign',
+      entityId: campaign.id,
+      entityName: campaign.name,
+      description: `Campaign "${campaign.name}" deleted`
+    });
 
     res.json({
       success: true,
