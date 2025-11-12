@@ -1,8 +1,5 @@
-// /pages/api/auth/send-otp.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import nodemailer from "nodemailer";
 import { userOperations } from "../../../lib/database";
-import { redis } from "../../../lib/redis"; // ✅ use redis instead of Map
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST")
@@ -12,9 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!email) return res.status(400).json({ error: "Email is required" });
 
   try {
-    // ✅ 1. Check if user already exists
     const existingUser = await userOperations.findByEmail(email);
-    console.log(`existingUser ${JSON.stringify(existingUser)}`);
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -22,29 +17,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // ✅ 2. Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Store in Redis with 5-minute TTL
-    await redis.set(`otp:${email}`, otp, "EX", 300); // 300 seconds = 5 min
-    console.log(`Generated OTP for ${email}: ${otp}`);
-    console.log(`process.env.NEXT_PUBLIC_SMTP_USER ${process.env.NEXT_PUBLIC_SMTP_USER} process.env.NEXT_PUBLIC_SMTP_USER${process.env.NEXT_PUBLIC_SMTP_USER}`)
-    // ✅ 3. Send OTP email
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.NEXT_PUBLIC_SMTP_USER,
-        pass: process.env.NEXT_PUBLIC_SMTP_PASS,
-      },
+    // Call NestJS backend to send OTP
+    const nestUrl = process.env.NEST_API_URL || 'http://localhost:4000';
+    const response = await fetch(`${nestUrl}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
 
-    await transporter.sendMail({
-      from: `"Lync Bot" <${process.env.NEXT_PUBLIC_SMTP_USER}>`,
-      to: email,
-      subject: "Your OTP for Account Verification",
-      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-      html: `<h3>Your OTP is: <b>${otp}</b></h3><p>It expires in 5 minutes.</p>`,
-    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send OTP');
+    }
 
     res.status(200).json({ success: true, message: "OTP sent successfully" });
   } catch (error) {

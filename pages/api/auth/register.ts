@@ -143,7 +143,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
 import { userOperations } from "../../../lib/database";
 import bcrypt from "bcryptjs";
-import { redis } from "@/lib/redis";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -165,21 +164,17 @@ export default async function handler(
         .json({ success: false, error: "Missing required fields" });
     }
 
-    // --- 1. Verify OTP ---
-    const record = await redis.get(`otp:${email}`);
+    // --- 1. Verify OTP via NestJS backend ---
+    const nestUrl = process.env.NEST_API_URL || 'http://localhost:4000';
+    const verifyResponse = await fetch(`${nestUrl}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    });
 
-    if (!record) {
-      return res
-        .status(400)
-        .json({ success: false, error: "OTP not found or expired" });
+    if (!verifyResponse.ok) {
+      return res.status(400).json({ success: false, error: "Invalid or expired OTP" });
     }
-
-    if (record !== otp) {
-      return res.status(400).json({ success: false, error: "Invalid OTP" });
-    }
-
-    // OTP valid → clear it
-    await redis.del(`otp:${email}`);
 
     // --- 2. Continue with account creation ---
     const existingUser = await userOperations.findByEmail(email);
